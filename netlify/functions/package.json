@@ -1,0 +1,9 @@
+{
+  "name": "ibkr-functions",
+  "version": "1.0.0",
+  "description": "Netlify Functions for IBKR Web API proxy",
+  "dependencies": {
+    "jose": "^5.2.0",
+    "node-fetch": "^2.7.0"
+  }
+}

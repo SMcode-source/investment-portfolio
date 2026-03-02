@@ -209,7 +209,10 @@ textarea{resize:vertical;min-height:80px}
   <div class="nav-section">Public</div>
   <div class="nav-item" data-page="public" onclick="show('public')"><span class="nav-icon">🔗</span> Public View</div>
   <div class="nav-item" data-page="settings" onclick="show('settings')"><span class="nav-icon">⚙️</span> Settings</div>
-  <div class="sidebar-footer"><span class="avatar">SM</span> Saptarshi M.</div>
+  <div class="sidebar-footer">
+    <div id="ibkr-status" style="margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8"><span style="width:6px;height:6px;border-radius:50%;background:#94a3b8"></span> IBKR: Disconnected</span></div>
+    <span class="avatar">SM</span> Saptarshi M.
+  </div>
 </nav>
 
 <main class="main">
@@ -390,36 +393,40 @@ textarea{resize:vertical;min-height:80px}
   <div class="grid-2">
     <div class="card card-body">
       <div style="display:flex;gap:8px;margin-bottom:16px">
-        <button class="btn btn-buy" style="flex:1">▲ BUY</button>
-        <button class="btn btn-ghost" style="flex:1;opacity:.5">▼ SELL</button>
+        <button class="btn btn-buy" id="trade-btn-buy" style="flex:1" onclick="setTradeType('BUY')">▲ BUY</button>
+        <button class="btn btn-ghost" id="trade-btn-sell" style="flex:1;opacity:.5" onclick="setTradeType('SELL')">▼ SELL</button>
       </div>
       <div class="form-grid">
-        <div class="form-group"><label>Ticker Symbol</label><input placeholder="e.g. NVDA" style="text-transform:uppercase"/></div>
-        <div class="form-group"><label>Date &amp; Time</label><input type="datetime-local" value="2025-08-14T10:30"/></div>
-        <div class="form-group"><label>Shares</label><input type="number" placeholder="0"/></div>
-        <div class="form-group"><label>Price Per Share</label><input type="number" placeholder="0.00" step="0.01"/></div>
-        <div class="form-group"><label>Commission</label><input type="number" placeholder="0.00" step="0.01"/></div>
-        <div class="form-group"><label>Currency</label><select><option>USD</option><option>GBP</option><option>EUR</option><option>JPY</option><option>CAD</option></select></div>
+        <div class="form-group" style="position:relative"><label>Ticker Symbol</label><input id="trade-ticker" placeholder="e.g. NVDA" style="text-transform:uppercase" autocomplete="off" oninput="handleTickerSearch(this.value)"/><div id="ticker-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e2e8f0;border-radius:8px;max-height:200px;overflow-y:auto;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div></div>
+        <div class="form-group"><label>Date &amp; Time</label><input id="trade-datetime" type="datetime-local"/></div>
+        <div class="form-group"><label>Shares</label><input id="trade-shares" type="number" placeholder="0" min="1" oninput="updateTradeCalc()"/></div>
+        <div class="form-group"><label>Price Per Share</label><input id="trade-price" type="number" placeholder="0.00" step="0.01" oninput="updateTradeCalc()"/></div>
+        <div class="form-group"><label>Commission</label><input id="trade-commission" type="number" placeholder="0.00" step="0.01" value="0" oninput="updateTradeCalc()"/></div>
+        <div class="form-group"><label>Currency</label><select id="trade-currency"><option>USD</option><option>GBP</option><option>EUR</option><option>JPY</option><option>CAD</option></select></div>
+      </div>
+      <div id="live-price-box" style="display:none;background:linear-gradient(135deg,#eef2ff,#f0fdf4);border-radius:8px;padding:12px 14px;margin-bottom:14px;border-left:3px solid var(--brand);font-size:13px">
+        <div class="flex-between mb-8"><span class="muted">Live Price (<span id="live-price-ticker"></span>)</span><strong id="live-price-display" style="font-size:16px">—</strong></div>
+        <div style="font-size:11px;color:var(--muted)">Updated <span id="live-price-time">—</span> · <a href="#" onclick="useCurrentPrice();return false" style="color:var(--brand);text-decoration:none;font-weight:600">Use this price</a></div>
       </div>
       <div style="background:#f8fafc;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px">
-        <div class="flex-between mb-8"><span class="muted">Trade Value</span><strong>$20,463.24</strong></div>
-        <div class="flex-between mb-8"><span class="muted">Commission</span><strong>$0.00</strong></div>
-        <div class="flex-between"><span class="muted">Cash After</span><strong>$6,240.18</strong></div>
+        <div class="flex-between mb-8"><span class="muted">Trade Value</span><strong id="trade-val-display">$0.00</strong></div>
+        <div class="flex-between mb-8"><span class="muted">Commission</span><strong id="trade-comm-display">$0.00</strong></div>
+        <div class="flex-between"><span class="muted">Cash After</span><strong id="trade-cash-display">$0.00</strong></div>
       </div>
-      <button class="btn btn-buy" style="width:100%">✓ Confirm Buy</button>
+      <button class="btn btn-buy" id="trade-confirm-btn" style="width:100%" onclick="submitTrade()">✓ Confirm Buy</button>
     </div>
     <div class="card card-body">
       <div style="font-size:14px;font-weight:600;color:var(--heading);margin-bottom:14px">Trade Reasoning</div>
       <div class="form-group" style="margin-bottom:14px">
         <label>Thesis</label>
-        <textarea rows="4" placeholder="Why this trade? What's your thesis?"></textarea>
+        <textarea id="trade-thesis" rows="4" placeholder="Why this trade? What's your thesis?"></textarea>
       </div>
       <div class="form-grid">
-        <div class="form-group"><label>Sentiment</label><select><option value="BULLISH">🟢 Bullish</option><option value="NEUTRAL">🟡 Neutral</option><option value="BEARISH">🔴 Bearish</option></select></div>
-        <div class="form-group"><label>Conviction</label><select><option>⭐⭐⭐⭐⭐ Very High</option><option>⭐⭐⭐⭐ High</option><option>⭐⭐⭐ Medium</option><option>⭐⭐ Low</option></select></div>
+        <div class="form-group"><label>Sentiment</label><select id="trade-sentiment"><option value="BULLISH">🟢 Bullish</option><option value="NEUTRAL">🟡 Neutral</option><option value="BEARISH">🔴 Bearish</option></select></div>
+        <div class="form-group"><label>Conviction</label><select id="trade-conviction"><option value="5">⭐⭐⭐⭐⭐ Very High</option><option value="4">⭐⭐⭐⭐ High</option><option value="3">⭐⭐⭐ Medium</option><option value="2">⭐⭐ Low</option></select></div>
       </div>
-      <div class="form-group" style="margin-bottom:14px"><label>Tags</label><input placeholder="AI, semiconductors, growth…"/></div>
-      <div class="form-group"><label>Target / Stop Loss</label><div class="flex gap-8"><input placeholder="Target $600" style="flex:1"/><input placeholder="Stop $420" style="flex:1"/></div></div>
+      <div class="form-group" style="margin-bottom:14px"><label>Tags</label><input id="trade-tags" placeholder="AI, semiconductors, growth…"/></div>
+      <div class="form-group"><label>Target / Stop Loss</label><div class="flex gap-8"><input id="trade-target" placeholder="Target $600" style="flex:1"/><input id="trade-stop" placeholder="Stop $420" style="flex:1"/></div></div>
     </div>
   </div>
 </div>
@@ -452,13 +459,8 @@ textarea{resize:vertical;min-height:80px}
   <div class="card table-wrap">
     <table>
       <thead><tr><th>Date</th><th>Ticker</th><th>Type</th><th class="r">Shares</th><th class="r">Price</th><th class="r">Total</th><th class="r">Cash After</th><th>Journal</th></tr></thead>
-      <tbody>
-        <tr><td>14 Aug 2025</td><td><strong>TSLA</strong></td><td><span class="badge badge-bear">SELL</span></td><td class="r">10</td><td class="r">$198.74</td><td class="r">$1,987</td><td class="r">$32,569</td><td><span class="badge badge-blue">Linked</span></td></tr>
-        <tr><td>2 Jul 2025</td><td><strong>NVDA</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">95</td><td class="r">$318.40</td><td class="r">$30,248</td><td class="r">$30,582</td><td><span class="badge badge-blue">Linked</span></td></tr>
-        <tr><td>18 Jun 2025</td><td><strong>TSLA</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">35</td><td class="r">$248.00</td><td class="r">$8,680</td><td class="r">$60,830</td><td><span class="badge badge-blue">Linked</span></td></tr>
-        <tr><td>5 May 2025</td><td><strong>BARC.L</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">2,000</td><td class="r">£1.82</td><td class="r">£3,640</td><td class="r">$69,510</td><td><span class="badge badge-blue">Linked</span></td></tr>
-        <tr><td>12 Mar 2025</td><td><strong>BRK.B</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">25</td><td class="r">$348.20</td><td class="r">$8,705</td><td class="r">$74,190</td><td><span class="muted" style="font-size:11px">—</span></td></tr>
-        <tr><td>20 Jan 2025</td><td><strong>MSFT</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">45</td><td class="r">$380.10</td><td class="r">$17,105</td><td class="r">$82,895</td><td><span class="badge badge-blue">Linked</span></td></tr>
+      <tbody id="trade-history-body">
+        <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">No trades yet. Log your first trade to get started.</td></tr>
       </tbody>
     </table>
   </div>
@@ -1062,108 +1064,321 @@ function filterIndexes(q) {
 }
 
 // ══════════════════════════════════════════════════════════
-// PORTFOLIO SNAPSHOTS (Time Machine data)
+// IBKR WEB API MODULE (via Netlify Functions proxy)
 // ══════════════════════════════════════════════════════════
-var SNAPSHOTS = [
-  {
-    dateObj: new Date(2024, 8, 1),
-    dateLabel: '1 Sep 2024',
-    totalValue: 100000, cash: 100000, gainPct: 0.0, positions: 0, sectors: 0,
-    holdings: [],
-    sector: [{name:'Cash', pct:100, color:'#e2e8f0'}],
-    country: [{name:'Cash', pct:100, color:'#e2e8f0'}]
-  },
-  {
-    dateObj: new Date(2025, 0, 20),
-    dateLabel: '20 Jan 2025',
-    totalValue: 101129, cash: 82895, gainPct: 1.1, positions: 1, sectors: 1,
-    holdings: [
-      {ticker:'MSFT', name:'Microsoft Corp', shares:45, cost:380.10, price:405.20, cur:'$', sector:'Technology', country:'\u{1F1FA}\u{1F1F8} USA', pnl:6.6, wt:18.0}
-    ],
-    sector: [
-      {name:'Technology', pct:18, color:'#4f46e5'},
-      {name:'Cash',       pct:82, color:'#e2e8f0'}
-    ],
-    country: [
-      {name:'USA',  pct:18, color:'#4f46e5'},
-      {name:'Cash', pct:82, color:'#e2e8f0'}
-    ]
-  },
-  {
-    dateObj: new Date(2025, 4, 5),
-    dateLabel: '5 May 2025',
-    totalValue: 101974, cash: 69510, gainPct: 2.0, positions: 3, sectors: 2,
-    holdings: [
-      {ticker:'MSFT',  name:'Microsoft Corp',    shares:45,   cost:380.10, price:395.80, cur:'$', sector:'Technology', country:'\u{1F1FA}\u{1F1F8} USA', pnl:4.1, wt:17.5},
-      {ticker:'BRK.B', name:'Berkshire Hathaway', shares:25,   cost:348.20, price:378.50, cur:'$', sector:'Finance',   country:'\u{1F1FA}\u{1F1F8} USA', pnl:8.7, wt:9.3},
-      {ticker:'BARC.L',name:'Barclays PLC',       shares:2000, cost:1.82,   price:2.02,   cur:'\u{00A3}', sector:'Finance', country:'\u{1F1EC}\u{1F1E7} UK', pnl:11.0, wt:5.1}
-    ],
-    sector: [
-      {name:'Technology', pct:17, color:'#4f46e5'},
-      {name:'Finance',    pct:15, color:'#7c3aed'},
-      {name:'Cash',       pct:68, color:'#e2e8f0'}
-    ],
-    country: [
-      {name:'USA',  pct:27, color:'#4f46e5'},
-      {name:'UK',   pct:5,  color:'#16a34a'},
-      {name:'Cash', pct:68, color:'#e2e8f0'}
-    ]
-  },
-  {
-    dateObj: new Date(2025, 7, 14),
-    dateLabel: '14 Aug 2025',
-    totalValue: 118217, cash: 32569, gainPct: 18.2, positions: 5, sectors: 3,
-    holdings: [
-      {ticker:'NVDA',  name:'NVIDIA Corp',        shares:95,   cost:318.40, price:487.22, cur:'$', sector:'Technology', country:'\u{1F1FA}\u{1F1F8} USA', pnl:53.0, wt:39.2},
-      {ticker:'MSFT',  name:'Microsoft Corp',     shares:45,   cost:380.10, price:412.55, cur:'$', sector:'Technology', country:'\u{1F1FA}\u{1F1F8} USA', pnl:8.5,  wt:15.7},
-      {ticker:'BARC.L',name:'Barclays PLC',       shares:2000, cost:1.82,   price:2.14,   cur:'\u{00A3}', sector:'Finance', country:'\u{1F1EC}\u{1F1E7} UK', pnl:17.6, wt:4.7},
-      {ticker:'TSLA',  name:'Tesla Inc',          shares:25,   cost:248.00, price:198.74, cur:'$', sector:'Consumer',   country:'\u{1F1FA}\u{1F1F8} USA', pnl:-19.9,wt:4.2},
-      {ticker:'BRK.B', name:'Berkshire Hathaway', shares:25,   cost:348.20, price:401.10, cur:'$', sector:'Finance',    country:'\u{1F1FA}\u{1F1F8} USA', pnl:15.2, wt:8.5}
-    ],
-    sector: [
-      {name:'Technology', pct:55, color:'#4f46e5'},
-      {name:'Finance',    pct:13, color:'#7c3aed'},
-      {name:'Consumer',   pct:4,  color:'#f59e0b'},
-      {name:'Cash',       pct:28, color:'#e2e8f0'}
-    ],
-    country: [
-      {name:'USA',  pct:68, color:'#4f46e5'},
-      {name:'UK',   pct:5,  color:'#16a34a'},
-      {name:'Cash', pct:27, color:'#e2e8f0'}
-    ]
-  }
-];
+var IBKRAPI = {
+  _cache: {},
+  _cacheTTL: 60000,
+  _conidMap: {}, // ticker→conid mapping cache
+  _initialized: false,
+  _status: 'disconnected', // disconnected, connecting, connected, error
 
-var currentSnapshot = SNAPSHOTS[SNAPSHOTS.length - 1];
+  _getCached: function(key) {
+    var c = this._cache[key];
+    if (c && (Date.now() - c.ts) < this._cacheTTL) return c.data;
+    // Also check localStorage for persistent cache
+    try {
+      var stored = JSON.parse(localStorage.getItem('ibkr_cache_' + key));
+      if (stored && (Date.now() - stored.ts) < this._cacheTTL * 10) { // localStorage cache: 10x longer TTL
+        this._cache[key] = stored;
+        return stored.data;
+      }
+    } catch(e) {}
+    return null;
+  },
+  _setCache: function(key, data) {
+    var entry = { data: data, ts: Date.now() };
+    this._cache[key] = entry;
+    // Persist to localStorage for data retention across reloads
+    try { localStorage.setItem('ibkr_cache_' + key, JSON.stringify(entry)); } catch(e) {}
+  },
 
-function findSnapshot(dateStr) {
-  var picked = new Date(dateStr);
-  var best = SNAPSHOTS[0];
-  for (var i = 0; i < SNAPSHOTS.length; i++) {
-    if (SNAPSHOTS[i].dateObj <= picked) best = SNAPSHOTS[i];
+  // Initialize IBKR brokerage session
+  init: function() {
+    var self = this;
+    self._status = 'connecting';
+    self._updateStatusUI();
+    return fetch('/api/ibkr-init')
+      .then(function(r) { return r.json(); })
+      .then(function(j) {
+        if (j.success) { self._status = 'connected'; self._initialized = true; }
+        else { self._status = 'error'; }
+        self._updateStatusUI();
+        return j;
+      })
+      .catch(function(err) {
+        self._status = 'error';
+        self._updateStatusUI();
+        console.warn('IBKR init failed:', err);
+        return { success: false, error: err.message };
+      });
+  },
+
+  _updateStatusUI: function() {
+    var el = document.getElementById('ibkr-status');
+    if (!el) return;
+    var colors = { disconnected: '#94a3b8', connecting: '#f59e0b', connected: '#16a34a', error: '#dc2626' };
+    var labels = { disconnected: 'Disconnected', connecting: 'Connecting...', connected: 'Connected', error: 'Error' };
+    el.innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:' + colors[this._status] + '">' +
+      '<span style="width:6px;height:6px;border-radius:50%;background:' + colors[this._status] + '"></span> IBKR: ' + labels[this._status] + '</span>';
+  },
+
+  // Resolve ticker symbol to IBKR conid
+  _resolveConid: function(ticker) {
+    if (this._conidMap[ticker]) return Promise.resolve(this._conidMap[ticker]);
+    // Check localStorage
+    try {
+      var stored = JSON.parse(localStorage.getItem('ibkr_conids'));
+      if (stored && stored[ticker]) { this._conidMap[ticker] = stored[ticker]; return Promise.resolve(stored[ticker]); }
+    } catch(e) {}
+    var self = this;
+    return this.searchTicker(ticker).then(function(results) {
+      if (results.length > 0) {
+        self._conidMap[ticker] = results[0].conid;
+        // Save conid mapping to localStorage
+        try {
+          var stored = JSON.parse(localStorage.getItem('ibkr_conids') || '{}');
+          stored[ticker] = results[0].conid;
+          localStorage.setItem('ibkr_conids', JSON.stringify(stored));
+        } catch(e) {}
+        return results[0].conid;
+      }
+      throw new Error('Ticker not found: ' + ticker);
+    });
+  },
+
+  getQuote: function(ticker) {
+    var self = this;
+    var cached = self._getCached('quote_' + ticker);
+    if (cached) return Promise.resolve(cached);
+    return self._resolveConid(ticker).then(function(conid) {
+      return fetch('/api/ibkr-quote?conids=' + conid)
+        .then(function(r) { return r.json(); })
+        .then(function(quotes) {
+          var q = quotes[conid];
+          if (!q) throw new Error('No quote data for ' + ticker);
+          var result = { price: q.price, prevClose: q.open, currency: 'USD', timestamp: Math.floor(q.timestamp / 1000), change: q.change, changePct: q.changePct };
+          self._setCache('quote_' + ticker, result);
+          // Save latest prices to localStorage for offline access
+          self._saveLivePrices(ticker, result);
+          return result;
+        });
+    });
+  },
+
+  getHistorical: function(ticker, range) {
+    var self = this;
+    range = range || '5y';
+    var cached = self._getCached('hist_' + ticker + '_' + range);
+    if (cached) return Promise.resolve(cached);
+    return self._resolveConid(ticker).then(function(conid) {
+      return fetch('/api/ibkr-historical?conid=' + conid + '&period=' + range + '&bar=1d')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var dates = [], prices = [];
+          if (data.dates) {
+            for (var i = 0; i < data.dates.length; i++) {
+              if (data.prices[i] != null) {
+                dates.push(new Date(data.dates[i]));
+                prices.push(data.prices[i]);
+              }
+            }
+          }
+          var result = { dates: dates, prices: prices };
+          self._setCache('hist_' + ticker + '_' + range, result);
+          return result;
+        });
+    });
+  },
+
+  searchTicker: function(query) {
+    var self = this;
+    var cached = self._getCached('search_' + query);
+    if (cached) return Promise.resolve(cached);
+    return fetch('/api/ibkr-search?q=' + encodeURIComponent(query))
+      .then(function(r) { return r.json(); })
+      .then(function(results) {
+        if (!Array.isArray(results)) results = [];
+        var normalized = results.map(function(r) {
+          return { symbol: r.symbol, name: r.name, exchange: r.exchange, type: r.type, conid: r.conid };
+        });
+        self._setCache('search_' + query, normalized);
+        return normalized;
+      });
+  },
+
+  getMultipleQuotes: function(tickers) {
+    var self = this;
+    // Try to resolve all conids first, then batch request
+    return Promise.all(tickers.map(function(t) {
+      return self.getQuote(t).then(function(q) { return { ticker: t, quote: q }; }).catch(function() { return { ticker: t, quote: null }; });
+    }));
+  },
+
+  // Save live prices to localStorage so they persist
+  _saveLivePrices: function(ticker, priceData) {
+    try {
+      var stored = JSON.parse(localStorage.getItem('ibkr_live_prices') || '{}');
+      stored[ticker] = { price: priceData.price, currency: priceData.currency, timestamp: Date.now() };
+      localStorage.setItem('ibkr_live_prices', JSON.stringify(stored));
+    } catch(e) {}
+  },
+
+  // Load last known prices from localStorage (for offline/startup)
+  getStoredPrices: function() {
+    try { return JSON.parse(localStorage.getItem('ibkr_live_prices') || '{}'); } catch(e) { return {}; }
   }
-  return best;
+};
+
+// Alias for backward compatibility with existing code references
+var YahooAPI = IBKRAPI;
+
+// ══════════════════════════════════════════════════════════
+// PORTFOLIO STATE MANAGER (localStorage-backed)
+// ══════════════════════════════════════════════════════════
+var STARTING_CASH = 100000;
+var SECTOR_COLORS = { Technology:'#4f46e5', Finance:'#7c3aed', Consumer:'#f59e0b', Healthcare:'#06b6d4', Energy:'#ef4444', 'Real Estate':'#84cc16', Utilities:'#8b5cf6', Industrials:'#f97316', Materials:'#14b8a6', 'Communication Services':'#ec4899', Cash:'#e2e8f0' };
+var COUNTRY_COLORS = { USA:'#4f46e5', UK:'#16a34a', Japan:'#dc2626', Germany:'#f59e0b', Canada:'#ec4899', Cash:'#e2e8f0' };
+
+function getPortfolioData() {
+  try { var d = JSON.parse(localStorage.getItem('portfolio_tracker_data')); if (d && d.trades) return d; } catch(e) {}
+  return { trades: [], cash: STARTING_CASH, initialCash: STARTING_CASH, lastUpdated: new Date().toISOString(), version: 1 };
+}
+function savePortfolioData(data) {
+  data.lastUpdated = new Date().toISOString();
+  localStorage.setItem('portfolio_tracker_data', JSON.stringify(data));
+  // Also save a timestamped snapshot for history
+  savePortfolioSnapshot(data);
+}
+
+// Save a snapshot of current portfolio state (for history tracking)
+function savePortfolioSnapshot(data) {
+  try {
+    var snapshots = JSON.parse(localStorage.getItem('portfolio_snapshots') || '[]');
+    var now = new Date();
+    var dateKey = now.toISOString().slice(0, 10); // YYYY-MM-DD
+    // Only save one snapshot per day (update if same day)
+    var existing = snapshots.findIndex(function(s) { return s.date === dateKey; });
+    var snap = {
+      date: dateKey,
+      timestamp: now.toISOString(),
+      cash: data.cash,
+      tradesCount: data.trades.length,
+      livePrices: IBKRAPI.getStoredPrices()
+    };
+    if (existing >= 0) { snapshots[existing] = snap; } else { snapshots.push(snap); }
+    // Keep last 365 days of snapshots
+    if (snapshots.length > 365) snapshots = snapshots.slice(-365);
+    localStorage.setItem('portfolio_snapshots', JSON.stringify(snapshots));
+  } catch(e) { console.warn('Failed to save snapshot:', e); }
+}
+
+// Compute holdings from trade history
+function computeHoldings(trades) {
+  var map = {};
+  trades.forEach(function(t) {
+    if (!map[t.ticker]) map[t.ticker] = { ticker: t.ticker, name: t.name || t.ticker, shares: 0, totalCost: 0, currency: t.currency || 'USD', sector: t.sector || 'Other', country: t.country || 'USA' };
+    if (t.type === 'BUY') { map[t.ticker].shares += t.shares; map[t.ticker].totalCost += t.shares * t.pricePerShare; }
+    else { map[t.ticker].shares -= t.shares; map[t.ticker].totalCost -= t.shares * t.pricePerShare; }
+    if (t.name) map[t.ticker].name = t.name;
+    if (t.sector) map[t.ticker].sector = t.sector;
+    if (t.country) map[t.ticker].country = t.country;
+  });
+  var holdings = [];
+  Object.keys(map).forEach(function(k) { if (map[k].shares > 0) holdings.push(map[k]); });
+  return holdings;
+}
+
+// Build a snapshot compatible with existing renderSnapshot()
+function buildLiveSnapshot(portfolioData, livePrices) {
+  var holdings = computeHoldings(portfolioData.trades);
+  var totalHoldingsValue = 0;
+  var holdingsArr = holdings.map(function(h) {
+    var lp = livePrices[h.ticker];
+    var price = lp ? lp.price : (h.totalCost / h.shares);
+    var cost = h.shares > 0 ? h.totalCost / h.shares : 0;
+    var val = h.shares * price;
+    totalHoldingsValue += val;
+    var pnl = cost > 0 ? ((price - cost) / cost) * 100 : 0;
+    var cur = (h.currency === 'GBP') ? '\u00A3' : (h.currency === 'EUR') ? '\u20AC' : '$';
+    return { ticker: h.ticker, name: h.name, shares: h.shares, cost: cost, price: price, cur: cur, sector: h.sector, country: h.country, pnl: pnl, wt: 0, value: val };
+  });
+  var totalValue = portfolioData.cash + totalHoldingsValue;
+  holdingsArr.forEach(function(h) { h.wt = totalValue > 0 ? (h.value / totalValue) * 100 : 0; });
+  // Sector allocation
+  var sectorMap = {}; holdingsArr.forEach(function(h) { sectorMap[h.sector] = (sectorMap[h.sector] || 0) + h.wt; });
+  var cashPct = totalValue > 0 ? (portfolioData.cash / totalValue) * 100 : 100;
+  var sectors = Object.keys(sectorMap).map(function(s) { return { name: s, pct: Math.round(sectorMap[s]), color: SECTOR_COLORS[s] || '#94a3b8' }; });
+  sectors.push({ name: 'Cash', pct: Math.round(cashPct), color: '#e2e8f0' });
+  // Country allocation
+  var countryMap = {}; holdingsArr.forEach(function(h) {
+    var cName = h.country.replace(/^[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]\s*/, '');
+    countryMap[cName] = (countryMap[cName] || 0) + h.wt;
+  });
+  var countries = Object.keys(countryMap).map(function(c) { return { name: c, pct: Math.round(countryMap[c]), color: COUNTRY_COLORS[c] || '#94a3b8' }; });
+  countries.push({ name: 'Cash', pct: Math.round(cashPct), color: '#e2e8f0' });
+  var gainPct = portfolioData.initialCash > 0 ? ((totalValue - portfolioData.initialCash) / portfolioData.initialCash) * 100 : 0;
+  var uniqueSectors = Object.keys(sectorMap).length;
+  var now = new Date();
+  return {
+    dateObj: now, dateLabel: now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+    totalValue: Math.round(totalValue), cash: Math.round(portfolioData.cash), gainPct: Math.round(gainPct * 10) / 10,
+    positions: holdingsArr.length, sectors: uniqueSectors, holdings: holdingsArr,
+    sector: sectors, country: countries
+  };
+}
+
+var currentSnapshot = null;
+var _livePrices = {};
+
+// Refresh portfolio with live data
+function refreshPortfolio() {
+  var pData = getPortfolioData();
+  var holdings = computeHoldings(pData.trades);
+  var tickers = holdings.map(function(h) { return h.ticker; });
+  if (tickers.length === 0) {
+    currentSnapshot = buildLiveSnapshot(pData, {});
+    renderSnapshot(currentSnapshot);
+    updateTimeMachineLabel();
+    return Promise.resolve();
+  }
+  return IBKRAPI.getMultipleQuotes(tickers).then(function(results) {
+    results.forEach(function(r) { if (r.quote) _livePrices[r.ticker] = r.quote; });
+    currentSnapshot = buildLiveSnapshot(pData, _livePrices);
+    renderSnapshot(currentSnapshot);
+    updateTimeMachineLabel();
+    // Save updated snapshot to localStorage on every refresh
+    savePortfolioSnapshot(pData);
+  }).catch(function(err) {
+    console.warn('Failed to fetch live prices, using stored prices:', err);
+    // Fall back to stored prices from localStorage
+    var storedPrices = IBKRAPI.getStoredPrices();
+    Object.keys(storedPrices).forEach(function(t) {
+      if (!_livePrices[t]) _livePrices[t] = storedPrices[t];
+    });
+    currentSnapshot = buildLiveSnapshot(pData, _livePrices);
+    renderSnapshot(currentSnapshot);
+  });
+}
+
+function updateTimeMachineLabel() {
+  var badge = document.getElementById('tm-badge');
+  if (badge && currentSnapshot) badge.textContent = 'Live — ' + currentSnapshot.dateLabel;
 }
 
 function applyTimeMachine() {
-  var inp = document.getElementById('tm-date'); if(!inp) return;
-  currentSnapshot = findSnapshot(inp.value);
-  renderSnapshot(currentSnapshot);
-  var badge=document.getElementById('tm-badge'), back=document.getElementById('tm-back');
-  if(badge) badge.textContent='Showing: '+currentSnapshot.dateLabel;
-  if(back)  back.classList.remove('hidden');
+  // In live mode, time machine just refreshes current data
+  refreshPortfolio();
 }
 
 function resetTimeMachine() {
-  currentSnapshot = SNAPSHOTS[SNAPSHOTS.length-1];
-  renderSnapshot(currentSnapshot);
-  var inp=document.getElementById('tm-date'), badge=document.getElementById('tm-badge'), back=document.getElementById('tm-back');
-  if(inp)   inp.value='2025-08-14';
-  if(badge) badge.textContent='Showing: Current — 14 Aug 2025';
-  if(back)  back.classList.add('hidden');
+  refreshPortfolio();
+  var back = document.getElementById('tm-back');
+  if (back) back.classList.add('hidden');
 }
 
 function renderSnapshot(snap) {
+  if (!snap) return;
   // KPIs
   document.getElementById('kpi-value').textContent     = '$' + snap.totalValue.toLocaleString();
   var retEl = document.getElementById('kpi-return');
@@ -1219,8 +1434,7 @@ function renderAlloc(containerId, data) {
   }).join('');
 }
 
-// Init dashboard with current snapshot
-renderSnapshot(currentSnapshot);
+// Dashboard init is handled by initApp() at the bottom of the file
 
 // ══════════════════════════════════════════════════════════
 // SHARED CHART HELPERS
@@ -1245,47 +1459,77 @@ var CHART = (function() {
 })();
 
 // ══════════════════════════════════════════════════════════
-// CHART ENGINE
+// CHART ENGINE (Yahoo Finance live data)
 // ══════════════════════════════════════════════════════════
 (function () {
-  // Seeded PRNG (consistent data on every reload)
-  var seed = 20250814;
-  function rand() { seed = ((seed * 1664525) + 1013904223) & 0x7fffffff; return seed / 0x7fffffff; }
-  function randn() { var u = rand() + 1e-10, v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
-
-  // Generate 5 years of trading days (Aug 2020 → Aug 2025)
-  var DAYS = 1260;
-  var dates = [];
-  var d = new Date(2020, 7, 14); // Aug 14 2020
-  while (dates.length < DAYS) {
-    if (d.getDay() !== 0 && d.getDay() !== 6) dates.push(new Date(d));
-    d.setDate(d.getDate() + 1);
-  }
-
-  // 5 series: portfolio, sp500, nasdaq, ftse, msci world
   var SERIES_CFG = [
-    { key:'portfolio', annual:0.184, vol:0.22, color:'#4f46e5', label:'Portfolio',   dotId:'dot-portfolio', retId:'tt-r-portfolio', shrId:'tt-s-portfolio' },
-    { key:'sp500',     annual:0.112, vol:0.14, color:'#16a34a', label:'S&P 500',     dotId:'dot-sp500',     retId:'tt-r-sp500',     shrId:'tt-s-sp500'     },
-    { key:'nasdaq',    annual:0.098, vol:0.18, color:'#f59e0b', label:'NASDAQ',      dotId:'dot-nasdaq',    retId:'tt-r-nasdaq',    shrId:'tt-s-nasdaq'    },
-    { key:'ftse',      annual:0.041, vol:0.11, color:'#94a3b8', label:'FTSE 100',    dotId:'dot-ftse',      retId:'tt-r-ftse',      shrId:'tt-s-ftse'      },
-    { key:'msci',      annual:0.085, vol:0.13, color:'#ec4899', label:'MSCI World',  dotId:'dot-msci',      retId:'tt-r-msci',      shrId:'tt-s-msci'      }
+    { key:'portfolio', ticker:null,    color:'#4f46e5', label:'Portfolio',   dotId:'dot-portfolio', retId:'tt-r-portfolio', shrId:'tt-s-portfolio' },
+    { key:'sp500',     ticker:'SPY',   color:'#16a34a', label:'S&P 500',     dotId:'dot-sp500',     retId:'tt-r-sp500',     shrId:'tt-s-sp500'     },
+    { key:'nasdaq',    ticker:'QQQ',   color:'#f59e0b', label:'NASDAQ',      dotId:'dot-nasdaq',    retId:'tt-r-nasdaq',    shrId:'tt-s-nasdaq'    },
+    { key:'ftse',      ticker:'ISF',   color:'#94a3b8', label:'FTSE 100',    dotId:'dot-ftse',      retId:'tt-r-ftse',      shrId:'tt-s-ftse'      },
+    { key:'msci',      ticker:'URTH',  color:'#ec4899', label:'MSCI World',  dotId:'dot-msci',      retId:'tt-r-msci',      shrId:'tt-s-msci'      }
   ];
 
+  var dates = [];
   var allData = {};
-  SERIES_CFG.forEach(function(cfg) {
-    var drift = cfg.annual / DAYS, v = cfg.vol / Math.sqrt(DAYS), cum = 0, arr = [0];
-    for (var i = 1; i < DAYS; i++) { cum += drift + v * randn(); arr.push(cum * 100); }
-    allData[cfg.key] = arr;
-  });
-
-  // Nominal data: what $100k invested in each series would be worth
-  var STARTING_CASH = 100000;
   var allDataNominal = {};
-  SERIES_CFG.forEach(function(cfg) {
-    allDataNominal[cfg.key] = allData[cfg.key].map(function(pct) {
-      return STARTING_CASH * (1 + pct / 100);
+  var chartLoaded = false;
+
+  // Load real historical data from Yahoo Finance
+  function loadChartData() {
+    var benchmarks = SERIES_CFG.filter(function(s) { return s.ticker; });
+    var promises = benchmarks.map(function(cfg) {
+      return IBKRAPI.getHistorical(cfg.ticker, '5y').then(function(data) {
+        return { key: cfg.key, dates: data.dates, prices: data.prices };
+      }).catch(function(err) {
+        console.warn('Failed to load ' + cfg.key + ':', err);
+        return { key: cfg.key, dates: [], prices: [] };
+      });
     });
-  });
+    return Promise.all(promises).then(function(results) {
+      // Use the S&P 500 dates as the master timeline (most complete)
+      var sp = results.find(function(r) { return r.key === 'sp500'; });
+      if (!sp || sp.dates.length < 10) {
+        console.warn('Insufficient benchmark data');
+        return;
+      }
+      dates = sp.dates;
+      // Convert each series to cumulative % returns
+      results.forEach(function(r) {
+        if (r.prices.length < 2) { allData[r.key] = dates.map(function() { return 0; }); return; }
+        // Align to master dates using closest-match
+        var base = r.prices[0];
+        var aligned = [];
+        var ri = 0;
+        for (var di = 0; di < dates.length; di++) {
+          while (ri < r.dates.length - 1 && r.dates[ri + 1] <= dates[di]) ri++;
+          aligned.push(((r.prices[ri] - base) / base) * 100);
+        }
+        allData[r.key] = aligned;
+      });
+      // Portfolio series: flat 0% until we have proper daily tracking
+      allData['portfolio'] = dates.map(function() { return 0; });
+      // If there are trades, show gain as flat line at current gain%
+      if (currentSnapshot && currentSnapshot.gainPct !== 0) {
+        var gp = currentSnapshot.gainPct;
+        allData['portfolio'] = dates.map(function(d, i) { return (i / dates.length) * gp; });
+      }
+      // Nominal data
+      SERIES_CFG.forEach(function(cfg) {
+        allDataNominal[cfg.key] = (allData[cfg.key] || []).map(function(pct) { return STARTING_CASH * (1 + pct / 100); });
+      });
+      // Expose to window
+      window._chartDates = dates;
+      window._chartData = allData;
+      window._seriesCfg = SERIES_CFG;
+      window._chartDataNominal = allDataNominal;
+      window._startingCash = STARTING_CASH;
+      chartLoaded = true;
+      renderChart();
+      // Also trigger Sharpe table population
+      if (typeof tryPopulateSharpe === 'function') tryPopulateSharpe();
+    });
+  }
 
   // SVG canvas
   var VW = 620, VH = 210;
@@ -1320,6 +1564,7 @@ var CHART = (function() {
   }
 
   function renderChart() {
+    if (!chartLoaded || dates.length < 2) return;
     var rng = getRange(); var s=rng[0],e=rng[1];
     var vDates = dates.slice(s,e);
     var vIdx   = []; for(var i=s;i<e;i++) vIdx.push(i);
@@ -1467,12 +1712,17 @@ var CHART = (function() {
     renderChart();
   };
 
+  // Expose references (will be populated after loadChartData)
   window._chartDates = dates;
   window._chartData  = allData;
   window._seriesCfg  = SERIES_CFG;
   window._chartDataNominal = allDataNominal;
   window._startingCash = STARTING_CASH;
-  renderChart();
+  window._loadChartData = loadChartData;
+  window._renderChart = renderChart;
+  // Show loading state in chart area
+  var chartEl = document.getElementById('chart-lines');
+  if (chartEl) chartEl.innerHTML = '<text x="300" y="100" font-size="13" fill="#94a3b8" text-anchor="middle">Loading market data...</text>';
 })();
 
 // ── Sharpe Calculator (outside IIFE, reads window._chartDates etc.) ───────────
@@ -1763,24 +2013,18 @@ function renderPubChart() {
 
 // ── Public View: Time Machine ─────────────────────────────────────────────────
 window.applyPubTimeMachine = function() {
-  var inp = document.getElementById('pub-tm-date'); if(!inp) return;
-  var snap = findSnapshot(inp.value);
-  renderPubSnapshot(snap);
-  var badge=document.getElementById('pub-tm-badge'), back=document.getElementById('pub-tm-back');
-  if(badge) badge.textContent='Showing: '+snap.dateLabel;
-  if(back)  back.classList.remove('hidden');
+  // In live mode, just show current snapshot
+  if (currentSnapshot) renderPubSnapshot(currentSnapshot);
 };
 
 window.resetPubTimeMachine = function() {
-  var snap = SNAPSHOTS[SNAPSHOTS.length-1];
-  renderPubSnapshot(snap);
-  var inp=document.getElementById('pub-tm-date'), badge=document.getElementById('pub-tm-badge'), back=document.getElementById('pub-tm-back');
-  if(inp)   inp.value='2025-08-14';
-  if(badge) badge.textContent='Showing: Current — 14 Aug 2025';
-  if(back)  back.classList.add('hidden');
+  if (currentSnapshot) renderPubSnapshot(currentSnapshot);
+  var back = document.getElementById('pub-tm-back');
+  if (back) back.classList.add('hidden');
 };
 
 function renderPubSnapshot(snap) {
+  if (!snap) return;
   // Update holdings title
   var titleEl = document.getElementById('pub-holdings-title');
   if (titleEl) titleEl.textContent = '📋 Holdings — ' + snap.dateLabel;
@@ -1837,19 +2081,19 @@ function renderPubSnapshot(snap) {
 // Init public view with current snapshot
 (function() {
   function tryInitPubView() {
-    if (typeof SNAPSHOTS === 'undefined') { setTimeout(tryInitPubView, 80); return; }
-    renderPubSnapshot(SNAPSHOTS[SNAPSHOTS.length - 1]);
+    if (!currentSnapshot) { setTimeout(tryInitPubView, 200); return; }
+    renderPubSnapshot(currentSnapshot);
   }
   tryInitPubView();
 })();
 
 // ── Populate Sharpe at-a-Glance tables (dashboard + analytics) ────────────────
-(function() {
-  function tryPopulate() {
-    if (!window._chartDates || !window._chartData || !window._seriesCfg || !window.computePeriodSharpe) {
-      setTimeout(tryPopulate, 80);
+function tryPopulateSharpe() {
+  (function() {
+    if (!window._chartDates || !window._chartData || !window._seriesCfg || !window.computePeriodSharpe || window._chartDates.length < 10) {
       return;
     }
+    var tryPopulate = function() {}; // dummy for compatibility
     var dates = window._chartDates;
     var cfg   = window._seriesCfg;
     var n     = dates.length;
@@ -1924,8 +2168,250 @@ function renderPubSnapshot(snap) {
     if (g2) g2.innerHTML = rows2;
     var g3 = document.getElementById('pub-sharpe-body');
     if (g3) g3.innerHTML = rows2; // public view uses same data as analytics
+  })();
+}
+
+// ══════════════════════════════════════════════════════════
+// TICKER AUTOCOMPLETE & TRADE FORM HANDLERS
+// ══════════════════════════════════════════════════════════
+var _tickerSearchTimeout = null;
+var _tradeType = 'BUY';
+var _selectedTickerData = null;
+
+window.setTradeType = function(type) {
+  _tradeType = type;
+  var buyBtn = document.getElementById('trade-btn-buy');
+  var sellBtn = document.getElementById('trade-btn-sell');
+  var confirmBtn = document.getElementById('trade-confirm-btn');
+  if (type === 'BUY') {
+    buyBtn.className = 'btn btn-buy'; buyBtn.style.opacity = '1';
+    sellBtn.className = 'btn btn-ghost'; sellBtn.style.opacity = '.5';
+    confirmBtn.className = 'btn btn-buy'; confirmBtn.textContent = '\u2713 Confirm Buy';
+  } else {
+    sellBtn.className = 'btn btn-sell'; sellBtn.style.opacity = '1';
+    buyBtn.className = 'btn btn-ghost'; buyBtn.style.opacity = '.5';
+    confirmBtn.className = 'btn btn-sell'; confirmBtn.textContent = '\u2713 Confirm Sell';
   }
-  tryPopulate();
+  updateTradeCalc();
+};
+
+window.handleTickerSearch = function(query) {
+  clearTimeout(_tickerSearchTimeout);
+  var dd = document.getElementById('ticker-dropdown');
+  if (query.length < 1) { dd.style.display = 'none'; return; }
+  _tickerSearchTimeout = setTimeout(function() {
+    IBKRAPI.searchTicker(query).then(function(results) {
+      if (results.length === 0) {
+        dd.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:12px">No results found</div>';
+      } else {
+        dd.innerHTML = results.map(function(r) {
+          return '<div style="padding:10px 12px;border-bottom:1px solid #f1f5f9;cursor:pointer;font-size:13px;transition:background .1s" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'#fff\'" onclick="selectTicker(\'' + r.symbol.replace(/'/g, "\\'") + '\',\'' + (r.name||'').replace(/'/g, "\\'") + '\')">' +
+            '<strong>' + r.symbol + '</strong> <span style="color:var(--muted)">— ' + (r.name || '') + '</span>' +
+            '<div style="font-size:11px;color:var(--muted)">' + (r.exchange || '') + ' · ' + (r.type || '') + '</div></div>';
+        }).join('');
+      }
+      dd.style.display = 'block';
+    }).catch(function() { dd.style.display = 'none'; });
+  }, 300);
+};
+
+window.selectTicker = function(symbol, name) {
+  document.getElementById('trade-ticker').value = symbol;
+  document.getElementById('ticker-dropdown').style.display = 'none';
+  _selectedTickerData = { symbol: symbol, name: name };
+  // Fetch live price
+  var box = document.getElementById('live-price-box');
+  box.style.display = 'block';
+  document.getElementById('live-price-ticker').textContent = symbol;
+  document.getElementById('live-price-display').textContent = 'Loading...';
+  IBKRAPI.getQuote(symbol).then(function(q) {
+    var cur = q.currency === 'GBP' ? '\u00A3' : q.currency === 'EUR' ? '\u20AC' : '$';
+    document.getElementById('live-price-display').textContent = cur + q.price.toFixed(2);
+    document.getElementById('live-price-time').textContent = new Date(q.timestamp * 1000).toLocaleTimeString();
+    _selectedTickerData.price = q.price;
+    _selectedTickerData.currency = q.currency;
+  }).catch(function() {
+    document.getElementById('live-price-display').textContent = 'Unavailable';
+  });
+};
+
+window.useCurrentPrice = function() {
+  if (_selectedTickerData && _selectedTickerData.price) {
+    document.getElementById('trade-price').value = _selectedTickerData.price.toFixed(2);
+    if (_selectedTickerData.currency) {
+      var sel = document.getElementById('trade-currency');
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === _selectedTickerData.currency) { sel.selectedIndex = i; break; }
+      }
+    }
+    updateTradeCalc();
+  }
+};
+
+window.updateTradeCalc = function() {
+  var shares = parseFloat(document.getElementById('trade-shares').value) || 0;
+  var price = parseFloat(document.getElementById('trade-price').value) || 0;
+  var comm = parseFloat(document.getElementById('trade-commission').value) || 0;
+  var tradeVal = shares * price;
+  var pData = getPortfolioData();
+  var cashAfter = _tradeType === 'BUY' ? pData.cash - tradeVal - comm : pData.cash + tradeVal - comm;
+  document.getElementById('trade-val-display').textContent = '$' + tradeVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById('trade-comm-display').textContent = '$' + comm.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById('trade-cash-display').textContent = '$' + cashAfter.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById('trade-cash-display').style.color = cashAfter < 0 ? 'var(--loss)' : 'var(--heading)';
+};
+
+window.submitTrade = function() {
+  var ticker = (document.getElementById('trade-ticker').value || '').trim().toUpperCase();
+  var shares = parseFloat(document.getElementById('trade-shares').value);
+  var price = parseFloat(document.getElementById('trade-price').value);
+  var comm = parseFloat(document.getElementById('trade-commission').value) || 0;
+  var currency = document.getElementById('trade-currency').value;
+  // Validation
+  if (!ticker) { alert('Please enter a ticker symbol'); return; }
+  if (!shares || shares <= 0) { alert('Please enter a valid number of shares'); return; }
+  if (!price || price <= 0) { alert('Please enter a valid price per share'); return; }
+  var pData = getPortfolioData();
+  var totalCost = shares * price + comm;
+  if (_tradeType === 'BUY' && totalCost > pData.cash) {
+    alert('Insufficient cash. Available: $' + pData.cash.toLocaleString(undefined, { minimumFractionDigits: 2 }) + ', Required: $' + totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+    return;
+  }
+  // Check for sufficient shares to sell
+  if (_tradeType === 'SELL') {
+    var holdings = computeHoldings(pData.trades);
+    var held = holdings.find(function(h) { return h.ticker === ticker; });
+    if (!held || held.shares < shares) {
+      alert('Insufficient shares. You hold ' + (held ? held.shares : 0) + ' shares of ' + ticker);
+      return;
+    }
+  }
+  // Determine name & metadata
+  var name = (_selectedTickerData && _selectedTickerData.name) ? _selectedTickerData.name : ticker;
+  var trade = {
+    id: 't_' + Date.now(),
+    ticker: ticker,
+    name: name,
+    date: document.getElementById('trade-datetime').value || new Date().toISOString(),
+    type: _tradeType,
+    shares: shares,
+    pricePerShare: price,
+    commission: comm,
+    currency: currency,
+    thesis: document.getElementById('trade-thesis').value || '',
+    sentiment: document.getElementById('trade-sentiment').value || 'BULLISH',
+    conviction: parseInt(document.getElementById('trade-conviction').value) || 5,
+    tags: (document.getElementById('trade-tags').value || '').split(',').map(function(t) { return t.trim(); }).filter(Boolean),
+    targetPrice: parseFloat(document.getElementById('trade-target').value) || null,
+    stopLoss: parseFloat(document.getElementById('trade-stop').value) || null,
+    sector: 'Other',
+    country: '\ud83c\uddfa\ud83c\uddf8 USA'
+  };
+  pData.trades.push(trade);
+  if (_tradeType === 'BUY') { pData.cash -= totalCost; } else { pData.cash += (shares * price) - comm; }
+  savePortfolioData(pData);
+  // Reset form
+  document.getElementById('trade-ticker').value = '';
+  document.getElementById('trade-shares').value = '';
+  document.getElementById('trade-price').value = '';
+  document.getElementById('trade-commission').value = '0';
+  document.getElementById('trade-thesis').value = '';
+  document.getElementById('trade-tags').value = '';
+  document.getElementById('trade-target').value = '';
+  document.getElementById('trade-stop').value = '';
+  document.getElementById('live-price-box').style.display = 'none';
+  _selectedTickerData = null;
+  updateTradeCalc();
+  // Refresh UI
+  refreshPortfolio().then(function() { renderTradeLog(); });
+  renderTradeLog();
+  // Switch to dashboard
+  show('dashboard');
+};
+
+// ══════════════════════════════════════════════════════════
+// TRADE HISTORY RENDERER
+// ══════════════════════════════════════════════════════════
+function renderTradeLog() {
+  var pData = getPortfolioData();
+  var tbody = document.getElementById('trade-history-body');
+  if (!tbody) return;
+  if (pData.trades.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">No trades yet. Log your first trade to get started.</td></tr>';
+    return;
+  }
+  var sorted = pData.trades.slice().sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+  var runCash = pData.initialCash;
+  // Compute cash-after for each trade in chronological order
+  var chronological = pData.trades.slice().sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+  var cashMap = {};
+  chronological.forEach(function(t) {
+    if (t.type === 'BUY') runCash -= (t.shares * t.pricePerShare + (t.commission || 0));
+    else runCash += (t.shares * t.pricePerShare - (t.commission || 0));
+    cashMap[t.id] = runCash;
+  });
+  tbody.innerHTML = sorted.map(function(t) {
+    var d = new Date(t.date);
+    var dateStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    var isBuy = t.type === 'BUY';
+    var total = t.shares * t.pricePerShare;
+    var cur = t.currency === 'GBP' ? '\u00A3' : t.currency === 'EUR' ? '\u20AC' : '$';
+    return '<tr>' +
+      '<td>' + dateStr + '</td>' +
+      '<td><strong>' + t.ticker + '</strong></td>' +
+      '<td><span class="badge ' + (isBuy ? 'badge-bull' : 'badge-bear') + '">' + t.type + '</span></td>' +
+      '<td class="r">' + t.shares.toLocaleString() + '</td>' +
+      '<td class="r">' + cur + t.pricePerShare.toFixed(2) + '</td>' +
+      '<td class="r">' + cur + Math.round(total).toLocaleString() + '</td>' +
+      '<td class="r">$' + Math.round(cashMap[t.id] || 0).toLocaleString() + '</td>' +
+      '<td>' + (t.thesis ? '<span class="badge badge-blue">Linked</span>' : '<span class="muted" style="font-size:11px">\u2014</span>') + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// INITIALIZATION
+// ══════════════════════════════════════════════════════════
+(function initApp() {
+  // Set default datetime
+  var dtInput = document.getElementById('trade-datetime');
+  if (dtInput) {
+    var now = new Date();
+    dtInput.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + 'T' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  }
+  // Initial trade calc
+  updateTradeCalc();
+  // Render trade history from saved data
+  renderTradeLog();
+  // Build initial snapshot from localStorage (using stored prices from last session)
+  var pData = getPortfolioData();
+  var storedPrices = IBKRAPI.getStoredPrices();
+  currentSnapshot = buildLiveSnapshot(pData, storedPrices);
+  renderSnapshot(currentSnapshot);
+  // Initialize IBKR connection, then fetch live data
+  IBKRAPI.init().then(function() {
+    return refreshPortfolio();
+  }).then(function() {
+    // Load chart data from IBKR
+    if (window._loadChartData) window._loadChartData();
+  }).catch(function(err) {
+    console.warn('IBKR init error, chart loading with cached data:', err);
+    if (window._loadChartData) window._loadChartData();
+  });
+  // Auto-refresh portfolio every 60 seconds (saves data on each refresh)
+  setInterval(function() {
+    refreshPortfolio().catch(function(e) { console.warn('Auto-refresh failed:', e); });
+  }, 60000);
+  // Save portfolio data before page unload
+  window.addEventListener('beforeunload', function() {
+    var pData = getPortfolioData();
+    savePortfolioData(pData);
+  });
+  // Close ticker dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    var dd = document.getElementById('ticker-dropdown');
+    if (dd && !dd.contains(e.target) && e.target.id !== 'trade-ticker') dd.style.display = 'none';
+  });
 })();
 </script>
 </body>
