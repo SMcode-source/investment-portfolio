@@ -1,0 +1,1932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Portfolio Tracker — Prototype</title>
+<meta name="description" content="SM's Investment Portfolio — long-term, conviction-based investing tracked publicly with performance vs benchmarks, Sharpe ratios, and full trade reasoning.">
+<meta name="theme-color" content="#4f46e5">
+<meta property="og:title" content="SM's Investment Portfolio">
+<meta property="og:description" content="Long-term, conviction-based investing. Performance vs S&P 500, NASDAQ, FTSE 100 and MSCI World. Full trade log with reasoning.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;display:flex;min-height:100vh}
+:root{--brand:#4f46e5;--brand-light:#eef2ff;--gain:#16a34a;--loss:#dc2626;--border:#f1f5f9;--muted:#94a3b8;--text:#374151;--heading:#0f172a}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:10;overflow-y:auto}
+.logo{padding:20px 18px 14px;border-bottom:1px solid var(--border)}
+.logo-name{font-weight:800;font-size:15px;color:var(--brand);letter-spacing:-.5px}
+.logo-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.nav-section{padding:14px 16px 4px;font-size:10px;font-weight:600;color:#cbd5e1;text-transform:uppercase;letter-spacing:.08em}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:500;color:#64748b;border-radius:8px;margin:1px 8px;transition:all .15s;user-select:none}
+.nav-item:hover{background:#f8fafc;color:#1e293b}
+.nav-item.active{background:var(--brand-light);color:var(--brand)}
+.nav-icon{font-size:14px;width:18px;text-align:center}
+.sidebar-footer{margin-top:auto;padding:14px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-right:8px;vertical-align:middle}
+
+/* MAIN */
+.main{margin-left:220px;padding:28px 32px;min-height:100vh;width:calc(100% - 220px)}
+.page{display:none}.page.active{display:block}
+.page-title{font-size:22px;font-weight:700;margin-bottom:6px;color:var(--heading)}
+.page-sub{font-size:13px;color:var(--muted);margin-bottom:22px}
+
+/* KPI CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.kpi{background:#fff;border-radius:12px;border:1px solid var(--border);padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:all .2s}
+.kpi-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600}
+.kpi-value{font-size:22px;font-weight:700;color:var(--heading)}
+.kpi-sub{font-size:12px;margin-top:4px;color:var(--muted)}
+
+/* CARDS */
+.card{background:#fff;border-radius:12px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px}
+.card-title{font-size:14px;font-weight:600;color:var(--heading)}
+.card-body{padding:18px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+
+/* TABLES */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:9px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:#f8fafc;white-space:nowrap}
+th.r,td.r{text-align:right}
+td{padding:10px 12px;border-bottom:1px solid #f8fafc;color:var(--text)}
+tr:last-child td{border:0}
+tr:hover td{background:#fafbff}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px}
+.badge-buy,.badge-bull{background:#dcfce7;color:#16a34a}
+.badge-sell,.badge-bear{background:#fee2e2;color:#dc2626}
+.badge-neut{background:#f1f5f9;color:#64748b}
+.badge-blue{background:#dbeafe;color:#2563eb}
+.badge-purple{background:#ede9fe;color:#7c3aed}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:inherit}
+.btn-primary{background:var(--brand);color:#fff}.btn-primary:hover{background:#4338ca}
+.btn-buy{background:var(--gain);color:#fff}.btn-buy:hover{background:#15803d}
+.btn-sell{background:var(--loss);color:#fff}.btn-sell:hover{background:#b91c1c}
+.btn-ghost{background:#f1f5f9;color:var(--text)}.btn-ghost:hover{background:#e2e8f0}
+.btn-sm{padding:5px 10px;font-size:12px}
+
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+label{font-size:12px;font-weight:600;color:var(--text)}
+input,select,textarea{padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;transition:border .15s;background:#fff;color:var(--heading)}
+input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+textarea{resize:vertical;min-height:80px}
+
+/* TIME MACHINE */
+.time-machine{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.time-machine span{color:#c7d2fe;font-size:13px;font-weight:500}
+.time-machine input[type=date]{padding:6px 10px;border-radius:7px;border:1px solid #4f46e5;background:#1e1b4b;color:#e0e7ff;font-size:13px;font-family:inherit;cursor:pointer}
+.time-machine .btn{background:#4f46e5;color:#fff;border:1px solid #6366f1}
+.time-machine .btn:hover{background:#6366f1}
+.tm-badge{background:rgba(99,102,241,.3);border:1px solid #6366f1;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;color:#c7d2fe;margin-left:auto}
+.tm-back{background:transparent;border:1px solid #6366f1;color:#a5b4fc;font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit}
+.tm-back:hover{background:#312e81}
+
+/* CHART */
+.chart-controls-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.period-btn{padding:4px 9px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;transition:all .15s;font-family:inherit}
+.period-btn:hover{background:#e2e8f0;color:#1e293b;border-color:#cbd5e1}
+.period-btn.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+.sharpe-btn{padding:3px 8px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;transition:all .15s;font-family:inherit}
+.sharpe-btn:hover{background:#e2e8f0;border-color:#cbd5e1}
+.sharpe-btn.active{background:#7c3aed;color:#fff;border-color:#7c3aed}
+.custom-range{display:none;align-items:center;gap:6px}
+.custom-range input[type=date]{padding:4px 8px;font-size:11px;border:1px solid #e2e8f0;border-radius:6px;height:28px}
+.custom-range button{padding:4px 10px;font-size:12px;font-weight:600;border-radius:6px;border:none;background:var(--brand);color:#fff;cursor:pointer;font-family:inherit}
+.series-toggle{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;cursor:pointer;color:#64748b;padding:3px 8px;border-radius:6px;border:1px solid #e2e8f0;transition:all .15s;user-select:none}
+.series-toggle.active{border-color:currentColor;opacity:1}
+.series-toggle:not(.active){opacity:.45}
+.chart-outer{position:relative;width:100%;user-select:none}
+#perf-chart{display:block;width:100%;cursor:crosshair;overflow:visible}
+.chart-tooltip{display:none;position:absolute;background:#0f172a;color:#fff;border-radius:10px;padding:11px 14px;font-size:12px;pointer-events:none;z-index:100;min-width:240px;box-shadow:0 8px 28px rgba(0,0,0,.3);border:1px solid #1e293b}
+.tt-date{font-weight:700;margin-bottom:8px;color:#94a3b8;font-size:10px;letter-spacing:.05em;text-transform:uppercase}
+.tt-header{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-bottom:2px;padding-bottom:4px;border-bottom:1px solid #1e293b}
+.tt-col-head{font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em}
+.tt-row{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-bottom:2px}
+.tt-label{font-size:11px}
+.tt-ret{font-weight:700;font-size:11px;text-align:right;min-width:52px}
+.tt-sharpe{font-weight:700;font-size:11px;text-align:right;min-width:38px}
+.tt-divider{border:0;border-top:1px solid #1e293b;margin:7px 0 5px}
+.tt-window{font-size:10px;color:#475569;margin-bottom:4px}
+.chart-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:#64748b}
+
+/* ALLOCATION BARS */
+.alloc-section{margin-bottom:14px}
+.alloc-section-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.alloc-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.alloc-label{font-size:12px;font-weight:500;color:var(--heading);min-width:80px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alloc-track{flex:1;height:8px;background:#f1f5f9;border-radius:99px;overflow:hidden}
+.alloc-fill{height:100%;border-radius:99px;transition:width .4s ease}
+.alloc-pct{font-size:11px;font-weight:700;color:var(--heading);min-width:34px;text-align:right}
+
+/* INDEXES PAGE */
+.index-search{width:100%;padding:9px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;margin-bottom:16px}
+.index-search:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+.index-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.index-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.index-region{font-size:10px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:.08em;padding:4px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.index-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f8fafc;font-size:12px}
+.index-row:last-child{border:0}
+.index-ticker{font-weight:700;color:var(--heading);min-width:60px}
+.index-name{color:var(--muted);flex:1;margin:0 8px;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.index-ret{font-weight:700;font-size:12px;min-width:44px;text-align:right}
+.index-row.hidden{display:none}
+
+/* MISC */
+.gain{color:var(--gain)}.loss{color:var(--loss)}
+.muted{color:var(--muted)}
+.flex{display:flex;align-items:center}
+.flex-between{display:flex;align-items:center;justify-content:space-between}
+.gap-8{gap:8px}.gap-12{gap:12px}
+.mb-16{margin-bottom:16px}.mb-18{margin-bottom:18px}.mb-8{margin-bottom:8px}
+.tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:12px;background:#f1f5f9;color:#64748b;margin:2px}
+.info-banner{background:var(--brand-light);border:1px solid #c7d2fe;border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:13px;color:#3730a3;display:flex;align-items:center;gap:10px}
+.public-header{background:linear-gradient(135deg,var(--brand) 0%,#7c3aed 100%);border-radius:12px;padding:24px;margin-bottom:20px;color:#fff}
+.public-header h1{font-size:22px;font-weight:800;margin-bottom:4px}
+.public-kpi{background:rgba(255,255,255,.15);border-radius:10px;padding:12px 16px;flex:1;min-width:0}
+.public-kpi-label{font-size:9px;opacity:.7;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.public-kpi-value{font-size:20px;font-weight:700}
+.holding-bar-bg{height:3px;background:#f1f5f9;border-radius:99px;margin-top:4px;overflow:hidden}
+.holding-bar-fill{height:100%;border-radius:99px;background:var(--brand)}
+.article-card{background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:box-shadow .15s}
+.article-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.article-img{height:130px;background:linear-gradient(135deg,var(--brand) 0%,#7c3aed 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px}
+.article-body{padding:14px}
+.article-title{font-size:13px;font-weight:700;color:var(--heading);margin-bottom:6px;line-height:1.4}
+.article-meta{font-size:11px;color:var(--muted)}
+.snapshot-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:box-shadow .15s}
+.snapshot-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.pill-nav{display:flex;gap:4px;margin-bottom:16px;background:#f1f5f9;border-radius:10px;padding:4px;width:fit-content}
+.pill{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:#64748b;transition:all .15s}
+.pill.active{background:#fff;color:var(--brand);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+/* SHARPE CALCULATOR */
+.calc-inputs{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding:16px;background:#f8fafc;border-radius:10px;border:1px solid var(--border)}
+.calc-inputs .form-group{min-width:120px}
+.calc-period-label{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:12px;padding:8px 12px;background:#f1f5f9;border-radius:8px}
+.sharpe-pill{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700}
+.sharpe-pill.excellent{background:#dcfce7;color:#15803d}
+.sharpe-pill.good{background:#fef9c3;color:#854d0e}
+.sharpe-pill.fair{background:#ffedd5;color:#c2410c}
+.sharpe-pill.poor{background:#fee2e2;color:#b91c1c}
+.glance-rating{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.calc-preset-btn{padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid #c7d2fe;background:#eef2ff;color:var(--brand);transition:all .15s;font-family:inherit}
+.calc-preset-btn:hover{background:#e0e7ff;border-color:#a5b4fc}
+.result-empty{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+.result-empty-icon{font-size:32px;margin-bottom:10px}
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="logo"><div class="logo-name">📈 PortfolioTracker</div><div class="logo-sub">Private Dashboard</div></div>
+  <div class="nav-section">Portfolio</div>
+  <div class="nav-item active" data-page="dashboard" onclick="show('dashboard')"><span class="nav-icon">◼</span> Dashboard</div>
+  <div class="nav-item" data-page="trade" onclick="show('trade')"><span class="nav-icon">↕</span> Log Trade</div>
+  <div class="nav-item" data-page="journal" onclick="show('journal')"><span class="nav-icon">📓</span> Journal</div>
+  <div class="nav-item" data-page="history" onclick="show('history')"><span class="nav-icon">🕐</span> Trade History</div>
+  <div class="nav-section">Analysis</div>
+  <div class="nav-item" data-page="analytics" onclick="show('analytics')"><span class="nav-icon">📊</span> Analytics</div>
+  <div class="nav-item" data-page="indexes" onclick="show('indexes')"><span class="nav-icon">🌐</span> Global Indexes</div>
+  <div class="nav-item" data-page="watchlist" onclick="show('watchlist')"><span class="nav-icon">👁</span> Watchlist</div>
+  <div class="nav-section">Content</div>
+  <div class="nav-item" data-page="think" onclick="show('think')"><span class="nav-icon">✍️</span> Think Pieces</div>
+  <div class="nav-item" data-page="snapshots" onclick="show('snapshots')"><span class="nav-icon">📸</span> Snapshots</div>
+  <div class="nav-section">Public</div>
+  <div class="nav-item" data-page="public" onclick="show('public')"><span class="nav-icon">🔗</span> Public View</div>
+  <div class="nav-item" data-page="settings" onclick="show('settings')"><span class="nav-icon">⚙️</span> Settings</div>
+  <div class="sidebar-footer"><span class="avatar">SM</span> Saptarshi M.</div>
+</nav>
+
+<main class="main">
+
+<!-- ══ DASHBOARD ══ -->
+<div id="dashboard" class="page active">
+  <div class="page-title">Dashboard</div>
+  <div class="page-sub">Portfolio overview · 15-min delayed quotes · Hover the chart for crosshair</div>
+
+  <!-- TIME MACHINE -->
+  <div class="time-machine" id="tm-bar">
+    <span>🕐 Time Machine:</span>
+    <input type="date" id="tm-date" value="2025-08-14" min="2024-08-15" max="2025-08-14"/>
+    <button class="btn btn-sm" onclick="applyTimeMachine()">View Portfolio</button>
+    <span class="tm-badge" id="tm-badge">Showing: Current — 14 Aug 2025</span>
+    <button class="tm-back hidden" id="tm-back" onclick="resetTimeMachine()">← Back to current</button>
+  </div>
+
+  <!-- KPI CARDS (updated by time machine) -->
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Portfolio Value</div><div class="kpi-value" id="kpi-value">$118,217</div><div class="kpi-sub" id="kpi-sub-value">Total incl. cash</div></div>
+    <div class="kpi"><div class="kpi-label">Total Return</div><div class="kpi-value gain" id="kpi-return">+18.2%</div><div class="kpi-sub" id="kpi-sub-return">vs S&amp;P 500 +11.2%</div></div>
+    <div class="kpi"><div class="kpi-label">Cash Balance</div><div class="kpi-value" id="kpi-cash">$32,569</div><div class="kpi-sub" id="kpi-sub-cash">27.6% of portfolio</div></div>
+    <div class="kpi"><div class="kpi-label">Positions</div><div class="kpi-value" id="kpi-positions">5</div><div class="kpi-sub" id="kpi-sub-pos">Across 3 sectors</div></div>
+  </div>
+
+  <!-- PERFORMANCE CHART -->
+  <div class="card mb-18">
+    <div class="card-header" style="flex-direction:column;align-items:stretch;gap:10px">
+      <div class="flex-between">
+        <span class="card-title">Performance vs Benchmarks</span>
+        <!-- Series toggles -->
+        <div class="flex gap-8" style="flex-wrap:wrap">
+          <span id="tog-portfolio" class="series-toggle active" style="color:#4f46e5" onclick="toggleSeries('portfolio')">● Portfolio</span>
+          <span id="tog-sp500"     class="series-toggle active" style="color:#16a34a" onclick="toggleSeries('sp500')">– S&amp;P 500</span>
+          <span id="tog-nasdaq"    class="series-toggle active" style="color:#f59e0b" onclick="toggleSeries('nasdaq')">– NASDAQ</span>
+          <span id="tog-ftse"      class="series-toggle active" style="color:#94a3b8" onclick="toggleSeries('ftse')">– FTSE 100</span>
+          <span id="tog-msci"      class="series-toggle active" style="color:#ec4899" onclick="toggleSeries('msci')">– MSCI World</span>
+          <span style="border-left:1px solid #e2e8f0;height:20px;margin:0 4px"></span>
+          <span id="tog-mode-pct" class="series-toggle active" style="color:#475569" onclick="setChartMode('pct')">%</span>
+          <span id="tog-mode-nom" class="series-toggle" style="color:#475569" onclick="setChartMode('nom')">$</span>
+        </div>
+      </div>
+      <div class="flex-between" style="flex-wrap:wrap;gap:8px">
+        <!-- Period buttons -->
+        <div class="chart-controls-row">
+          <span style="font-size:11px;color:#64748b;font-weight:600;margin-right:4px">Period:</span>
+          <button class="period-btn" data-p="1M"     onclick="setPeriod('1M')">1M</button>
+          <button class="period-btn" data-p="3M"     onclick="setPeriod('3M')">3M</button>
+          <button class="period-btn" data-p="6M"     onclick="setPeriod('6M')">6M</button>
+          <button class="period-btn" data-p="YTD"    onclick="setPeriod('YTD')">YTD</button>
+          <button class="period-btn active" data-p="1Y" onclick="setPeriod('1Y')">1Y</button>
+          <button class="period-btn" data-p="3Y"     onclick="setPeriod('3Y')">3Y</button>
+          <button class="period-btn" data-p="5Y"     onclick="setPeriod('5Y')">5Y</button>
+          <button class="period-btn" data-p="All"    onclick="setPeriod('All')">All</button>
+          <button class="period-btn" data-p="Custom" onclick="setPeriod('Custom')">Custom ▾</button>
+          <div id="custom-range" class="custom-range">
+            <input type="date" id="custom-start" value="2024-08-14" min="2020-08-14" max="2025-08-14"/>
+            <span style="font-size:11px;color:#64748b">→</span>
+            <input type="date" id="custom-end"   value="2025-08-14" min="2020-08-14" max="2025-08-14"/>
+            <button onclick="applyCustomRange()">Apply</button>
+          </div>
+        </div>
+        <!-- Sharpe window -->
+        <div class="chart-controls-row">
+          <span style="font-size:11px;color:#7c3aed;font-weight:700;margin-right:4px">Sharpe:</span>
+          <button class="sharpe-btn active" data-w="90"  onclick="setWindow(90)">90d</button>
+          <button class="sharpe-btn"        data-w="180" onclick="setWindow(180)">180d</button>
+          <button class="sharpe-btn"        data-w="365" onclick="setWindow(365)">365d</button>
+          <button class="sharpe-btn"        data-w="730" onclick="setWindow(730)">730d</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body" style="padding-bottom:12px">
+      <div class="chart-outer" id="chart-outer">
+        <svg id="perf-chart" viewBox="0 0 620 210">
+          <g id="chart-grid"></g>
+          <g id="chart-lines"></g>
+          <line id="crosshair-v" x1="0" y1="15" x2="0" y2="180" stroke="#64748b" stroke-width="1" stroke-dasharray="4,3" display="none" pointer-events="none"/>
+          <circle id="dot-portfolio" r="5"   fill="#4f46e5" stroke="#fff" stroke-width="2" display="none" pointer-events="none"/>
+          <circle id="dot-sp500"     r="3.5" fill="#16a34a" stroke="#fff" stroke-width="1.5" display="none" pointer-events="none"/>
+          <circle id="dot-nasdaq"    r="3.5" fill="#f59e0b" stroke="#fff" stroke-width="1.5" display="none" pointer-events="none"/>
+          <circle id="dot-ftse"      r="3.5" fill="#94a3b8" stroke="#fff" stroke-width="1.5" display="none" pointer-events="none"/>
+          <circle id="dot-msci"      r="3.5" fill="#ec4899" stroke="#fff" stroke-width="1.5" display="none" pointer-events="none"/>
+          <rect id="chart-overlay" x="52" y="15" width="558" height="165" fill="transparent" style="cursor:crosshair"/>
+        </svg>
+        <div class="chart-tooltip" id="chart-tooltip">
+          <div class="tt-date" id="tt-date">—</div>
+          <div class="tt-header">
+            <span class="tt-col-head">Series</span>
+            <span class="tt-col-head" style="text-align:right">Return</span>
+            <span class="tt-col-head" style="text-align:right">Sharpe</span>
+          </div>
+          <div class="tt-row"><span class="tt-label" style="color:#818cf8">● Portfolio</span> <span class="tt-ret" id="tt-r-portfolio">—</span> <span class="tt-sharpe" id="tt-s-portfolio">—</span></div>
+          <div class="tt-row"><span class="tt-label" style="color:#4ade80">– S&amp;P 500</span>   <span class="tt-ret" id="tt-r-sp500">—</span>     <span class="tt-sharpe" id="tt-s-sp500">—</span></div>
+          <div class="tt-row"><span class="tt-label" style="color:#fcd34d">– NASDAQ</span>    <span class="tt-ret" id="tt-r-nasdaq">—</span>    <span class="tt-sharpe" id="tt-s-nasdaq">—</span></div>
+          <div class="tt-row"><span class="tt-label" style="color:#cbd5e1">– FTSE 100</span>  <span class="tt-ret" id="tt-r-ftse">—</span>     <span class="tt-sharpe" id="tt-s-ftse">—</span></div>
+          <div class="tt-row"><span class="tt-label" style="color:#f9a8d4">– MSCI World</span><span class="tt-ret" id="tt-r-msci">—</span>     <span class="tt-sharpe" id="tt-s-msci">—</span></div>
+          <hr class="tt-divider"/>
+          <div class="tt-window" id="tt-window">Rolling window: 90d · Sharpe = (annualised return / annualised vol)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOLDINGS + ALLOCATIONS -->
+  <div class="card mb-18">
+    <div class="card-header">
+      <span class="card-title" id="holdings-title">Holdings — Current (14 Aug 2025)</span>
+      <button class="btn btn-primary btn-sm" onclick="show('trade')">+ Log Trade</button>
+    </div>
+    <div class="table-wrap">
+      <table id="holdings-table">
+        <thead><tr>
+          <th>Ticker</th><th>Name</th><th>Sector</th><th>Country</th>
+          <th class="r">Shares</th><th class="r">Avg Cost</th><th class="r">Price</th>
+          <th class="r">Value</th><th class="r">P&amp;L</th><th class="r">Weight</th>
+        </tr></thead>
+        <tbody id="holdings-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTOR + COUNTRY ALLOCATION -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Sector Allocation</span></div>
+      <div class="card-body" id="sector-alloc-body"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Country Allocation</span></div>
+      <div class="card-body" id="country-alloc-body"></div>
+    </div>
+  </div>
+
+  <!-- SHARPE AT A GLANCE -->
+  <div class="card" style="margin-top:18px">
+    <div class="card-header">
+      <div>
+        <span class="card-title">Sharpe Ratios at a Glance</span>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Annualised · Excess return over risk-free rate · Risk-free: 5.0% p.a. (US T-bill proxy)</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--muted)">Rating: </span>
+        <span class="sharpe-pill excellent">≥1.5 Excellent</span>
+        <span class="sharpe-pill good">≥0.5 Good</span>
+        <span class="sharpe-pill fair">≥0 Fair</span>
+        <span class="sharpe-pill poor">&lt;0 Poor</span>
+        <button class="btn btn-ghost btn-sm" onclick="show('analytics')" style="margin-left:8px">Full Calculator →</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="sharpe-glance-table">
+        <thead>
+          <tr>
+            <th>Series</th>
+            <th class="r">6M Sharpe</th>
+            <th class="r">6M Ann. Return</th>
+            <th class="r">6M Volatility</th>
+            <th class="r">1Y Sharpe</th>
+            <th class="r">1Y Ann. Return</th>
+            <th class="r">1Y Volatility</th>
+            <th>Rating (1Y)</th>
+          </tr>
+        </thead>
+        <tbody id="sharpe-glance-body">
+          <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /dashboard -->
+
+<!-- ══ LOG TRADE ══ -->
+<div id="trade" class="page">
+  <div class="page-title">Log Trade</div>
+  <div class="page-sub">Record a buy or sell. Attach journal reasoning and conviction.</div>
+  <div class="grid-2">
+    <div class="card card-body">
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button class="btn btn-buy" style="flex:1">▲ BUY</button>
+        <button class="btn btn-ghost" style="flex:1;opacity:.5">▼ SELL</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>Ticker Symbol</label><input placeholder="e.g. NVDA" style="text-transform:uppercase"/></div>
+        <div class="form-group"><label>Date &amp; Time</label><input type="datetime-local" value="2025-08-14T10:30"/></div>
+        <div class="form-group"><label>Shares</label><input type="number" placeholder="0"/></div>
+        <div class="form-group"><label>Price Per Share</label><input type="number" placeholder="0.00" step="0.01"/></div>
+        <div class="form-group"><label>Commission</label><input type="number" placeholder="0.00" step="0.01"/></div>
+        <div class="form-group"><label>Currency</label><select><option>USD</option><option>GBP</option><option>EUR</option><option>JPY</option><option>CAD</option></select></div>
+      </div>
+      <div style="background:#f8fafc;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px">
+        <div class="flex-between mb-8"><span class="muted">Trade Value</span><strong>$20,463.24</strong></div>
+        <div class="flex-between mb-8"><span class="muted">Commission</span><strong>$0.00</strong></div>
+        <div class="flex-between"><span class="muted">Cash After</span><strong>$6,240.18</strong></div>
+      </div>
+      <button class="btn btn-buy" style="width:100%">✓ Confirm Buy</button>
+    </div>
+    <div class="card card-body">
+      <div style="font-size:14px;font-weight:600;color:var(--heading);margin-bottom:14px">Trade Reasoning</div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Thesis</label>
+        <textarea rows="4" placeholder="Why this trade? What's your thesis?"></textarea>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>Sentiment</label><select><option value="BULLISH">🟢 Bullish</option><option value="NEUTRAL">🟡 Neutral</option><option value="BEARISH">🔴 Bearish</option></select></div>
+        <div class="form-group"><label>Conviction</label><select><option>⭐⭐⭐⭐⭐ Very High</option><option>⭐⭐⭐⭐ High</option><option>⭐⭐⭐ Medium</option><option>⭐⭐ Low</option></select></div>
+      </div>
+      <div class="form-group" style="margin-bottom:14px"><label>Tags</label><input placeholder="AI, semiconductors, growth…"/></div>
+      <div class="form-group"><label>Target / Stop Loss</label><div class="flex gap-8"><input placeholder="Target $600" style="flex:1"/><input placeholder="Stop $420" style="flex:1"/></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ JOURNAL ══ -->
+<div id="journal" class="page">
+  <div class="page-title">Trade Journal</div>
+  <div class="page-sub">Reasoning behind each trade.</div>
+  <div class="flex-between mb-18">
+    <div class="flex gap-8">
+      <select class="btn btn-ghost btn-sm" style="font-size:12px"><option>All Sentiments</option><option>🟢 Bullish</option><option>🟡 Neutral</option><option>🔴 Bearish</option></select>
+      <select class="btn btn-ghost btn-sm" style="font-size:12px"><option>All Conviction</option><option>⭐⭐⭐⭐⭐</option><option>⭐⭐⭐⭐</option><option>⭐⭐⭐</option></select>
+    </div>
+    <button class="btn btn-primary btn-sm">+ New Entry</button>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="card"><div class="card-header"><div><div class="flex gap-8 mb-8"><strong>NVDA — AI Infrastructure Play</strong><span class="badge badge-bull">Bullish</span><span style="color:#f59e0b;font-size:12px">⭐⭐⭐⭐⭐</span></div><div><span class="tag">AI</span><span class="tag">semiconductors</span><span class="tag">growth</span><span class="muted" style="font-size:11px;margin-left:8px">14 Aug 2025 · 2 trades</span></div></div><button class="btn btn-ghost btn-sm">Edit</button></div><div class="card-body"><p style="font-size:13px;line-height:1.7;margin-bottom:10px">NVDA is positioned to dominate the AI accelerator market through 2026+. Blackwell architecture is a significant leap in throughput. Hyperscalers committing $200B+ in capex. Gross margins stabilising above 75%.</p><div style="border-top:1px solid var(--border);padding-top:10px;font-size:12px;color:var(--muted)"><strong style="color:var(--text)">Linked:</strong><span class="badge badge-bull" style="margin:0 5px">BUY 42 @ $318.40</span><span class="badge badge-bull" style="margin:0 5px">BUY 10 @ $301.20</span></div></div></div>
+    <div class="card"><div class="card-header"><div><div class="flex gap-8 mb-8"><strong>TSLA — Fading Conviction</strong><span class="badge badge-neut">Neutral</span><span style="color:#f59e0b;font-size:12px">⭐⭐</span></div><div><span class="tag">EV</span><span class="tag">consumer</span><span class="muted" style="font-size:11px;margin-left:8px">2 Jul 2025 · 1 trade</span></div></div><button class="btn btn-ghost btn-sm">Edit</button></div><div class="card-body"><p style="font-size:13px;line-height:1.7">EV price war intensifying. Cybertruck quality concerns. FSD regulatory path slower than hoped. Watching Q3 delivery numbers before adding or trimming.</p></div></div>
+  </div>
+</div>
+
+<!-- ══ HISTORY ══ -->
+<div id="history" class="page">
+  <div class="page-title">Trade History</div>
+  <div class="page-sub">All executed trades, most recent first.</div>
+  <div class="flex-between mb-16">
+    <div class="flex gap-8"><select class="btn btn-ghost btn-sm" style="font-size:12px"><option>All Types</option><option>Buy</option><option>Sell</option></select><input placeholder="Search ticker…" style="padding:6px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;width:160px"/></div>
+    <button class="btn btn-ghost btn-sm">⬇ Export CSV</button>
+  </div>
+  <div class="card table-wrap">
+    <table>
+      <thead><tr><th>Date</th><th>Ticker</th><th>Type</th><th class="r">Shares</th><th class="r">Price</th><th class="r">Total</th><th class="r">Cash After</th><th>Journal</th></tr></thead>
+      <tbody>
+        <tr><td>14 Aug 2025</td><td><strong>TSLA</strong></td><td><span class="badge badge-bear">SELL</span></td><td class="r">10</td><td class="r">$198.74</td><td class="r">$1,987</td><td class="r">$32,569</td><td><span class="badge badge-blue">Linked</span></td></tr>
+        <tr><td>2 Jul 2025</td><td><strong>NVDA</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">95</td><td class="r">$318.40</td><td class="r">$30,248</td><td class="r">$30,582</td><td><span class="badge badge-blue">Linked</span></td></tr>
+        <tr><td>18 Jun 2025</td><td><strong>TSLA</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">35</td><td class="r">$248.00</td><td class="r">$8,680</td><td class="r">$60,830</td><td><span class="badge badge-blue">Linked</span></td></tr>
+        <tr><td>5 May 2025</td><td><strong>BARC.L</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">2,000</td><td class="r">£1.82</td><td class="r">£3,640</td><td class="r">$69,510</td><td><span class="badge badge-blue">Linked</span></td></tr>
+        <tr><td>12 Mar 2025</td><td><strong>BRK.B</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">25</td><td class="r">$348.20</td><td class="r">$8,705</td><td class="r">$74,190</td><td><span class="muted" style="font-size:11px">—</span></td></tr>
+        <tr><td>20 Jan 2025</td><td><strong>MSFT</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">45</td><td class="r">$380.10</td><td class="r">$17,105</td><td class="r">$82,895</td><td><span class="badge badge-blue">Linked</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ ANALYTICS ══ -->
+<div id="analytics" class="page">
+  <div class="page-title">Analytics</div>
+  <div class="page-sub">Performance metrics, Sharpe ratios, and benchmark comparison.</div>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Win Rate</div><div class="kpi-value">72%</div><div class="kpi-sub">13 of 18 closed</div></div>
+    <div class="kpi"><div class="kpi-label">Avg Gain</div><div class="kpi-value gain">+23.4%</div><div class="kpi-sub">Winning trades</div></div>
+    <div class="kpi"><div class="kpi-label">Avg Loss</div><div class="kpi-value loss">-11.2%</div><div class="kpi-sub">Losing trades</div></div>
+    <div class="kpi"><div class="kpi-label">Max Drawdown</div><div class="kpi-value loss">-14.8%</div><div class="kpi-sub">Feb–Mar 2025</div></div>
+  </div>
+
+  <!-- 6M + 1Y SHARPE TABLE -->
+  <div class="card mb-16">
+    <div class="card-header">
+      <span class="card-title">6-Month &amp; 1-Year Sharpe Ratios</span>
+      <span style="font-size:11px;color:var(--muted)">Risk-free: 5.0% · Annualised · Sharpe = (Ann. Return − Rf) / Ann. Vol</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Series</th>
+            <th class="r">6M Return</th><th class="r">6M Vol</th><th class="r">6M Sharpe</th>
+            <th class="r">1Y Return</th><th class="r">1Y Vol</th><th class="r">1Y Sharpe</th>
+            <th class="r">Sharpe Alpha (1Y)</th>
+          </tr>
+        </thead>
+        <tbody id="analytics-sharpe-body">
+          <tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted)">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SHARPE RATIO CALCULATOR -->
+  <div class="card mb-16">
+    <div class="card-header">
+      <div>
+        <span class="card-title">📐 Sharpe Ratio Calculator</span>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Custom date range · Portfolio vs all 5 benchmarks · Adjustable risk-free rate</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="calc-inputs">
+        <div class="form-group">
+          <label>From Date</label>
+          <input type="date" id="calc-start" value="2024-08-14" min="2020-08-14" max="2025-08-14"/>
+        </div>
+        <div class="form-group">
+          <label>To Date</label>
+          <input type="date" id="calc-end" value="2025-08-14" min="2020-08-14" max="2025-08-14"/>
+        </div>
+        <div class="form-group">
+          <label>Risk-Free Rate (% p.a.)</label>
+          <input type="number" id="calc-rf" value="5.00" step="0.25" min="0" max="20" style="width:110px"/>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:12px;font-weight:600;color:var(--text)">Quick Presets</label>
+          <div style="display:flex;gap:6px">
+            <button class="calc-preset-btn" data-p="1M"  onclick="setCalcPreset('1M')">1M</button>
+            <button class="calc-preset-btn" data-p="3M"  onclick="setCalcPreset('3M')">3M</button>
+            <button class="calc-preset-btn" data-p="6M"  onclick="setCalcPreset('6M')">6M</button>
+            <button class="calc-preset-btn" data-p="YTD" onclick="setCalcPreset('YTD')">YTD</button>
+            <button class="calc-preset-btn" data-p="1Y"  onclick="setCalcPreset('1Y')">1Y</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-primary" onclick="calcSharpe()">Calculate ↗</button>
+        </div>
+      </div>
+      <div id="calc-results-wrap">
+        <div class="result-empty">
+          <div class="result-empty-icon">📐</div>
+          Select a period and press <strong>Calculate</strong> to see Sharpe ratios for all series.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2 mb-16">
+    <div class="card"><div class="card-header"><span class="card-title">Return by Stock</span></div><div class="card-body"><svg viewBox="0 0 380 160" width="100%"><rect x="20" y="30" width="50" height="100" rx="4" fill="#4f46e5" opacity=".85"/><rect x="90" y="75" width="50" height="55" rx="4" fill="#4f46e5" opacity=".65"/><rect x="160" y="85" width="50" height="45" rx="4" fill="#4f46e5" opacity=".55"/><rect x="230" y="60" width="50" height="70" rx="4" fill="#4f46e5" opacity=".45"/><rect x="300" y="105" width="50" height="25" rx="4" fill="#dc2626" opacity=".7"/><text x="45" y="22" text-anchor="middle" font-size="10" fill="#4f46e5" font-weight="600">+53%</text><text x="115" y="67" text-anchor="middle" font-size="10" fill="#4f46e5" font-weight="600">+18%</text><text x="185" y="77" text-anchor="middle" font-size="10" fill="#4f46e5" font-weight="600">+15%</text><text x="255" y="52" text-anchor="middle" font-size="10" fill="#4f46e5" font-weight="600">+23%</text><text x="325" y="97" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="600">-20%</text><text x="45" y="150" text-anchor="middle" font-size="10" fill="#94a3b8">NVDA</text><text x="115" y="150" text-anchor="middle" font-size="10" fill="#94a3b8">BARC</text><text x="185" y="150" text-anchor="middle" font-size="10" fill="#94a3b8">BRK.B</text><text x="255" y="150" text-anchor="middle" font-size="10" fill="#94a3b8">MSFT</text><text x="325" y="150" text-anchor="middle" font-size="10" fill="#94a3b8">TSLA</text><line x1="10" y1="130" x2="370" y2="130" stroke="#f1f5f9" stroke-width="1.5"/></svg></div></div>
+    <div class="card"><div class="card-header"><span class="card-title">Benchmark Summary</span></div><div class="table-wrap"><table><thead><tr><th>Benchmark</th><th class="r">1Y Return</th><th class="r">vs Portfolio</th><th class="r">Sharpe</th></tr></thead><tbody><tr><td>My Portfolio</td><td class="r gain"><strong>+18.4%</strong></td><td class="r">—</td><td class="r gain">1.84</td></tr><tr><td>S&amp;P 500 (SPY)</td><td class="r">+11.2%</td><td class="r gain">+7.2%</td><td class="r">1.12</td></tr><tr><td>NASDAQ (QQQ)</td><td class="r">+9.8%</td><td class="r gain">+8.6%</td><td class="r">0.98</td></tr><tr><td>MSCI World (ACWI)</td><td class="r">+8.5%</td><td class="r gain">+9.9%</td><td class="r">1.21</td></tr><tr><td>FTSE 100 (EWU)</td><td class="r">+4.1%</td><td class="r gain">+14.3%</td><td class="r">0.41</td></tr></tbody></table></div></div>
+  </div>
+</div>
+
+<!-- ══ GLOBAL INDEXES ══ -->
+<div id="indexes" class="page">
+  <div class="page-title">Global Indexes &amp; ETF Universe</div>
+  <div class="page-sub">110+ ETFs across equities, sectors, countries, regions and money markets. Live quotes (15-min delay).</div>
+
+  <input class="index-search" id="idx-search" placeholder="🔍  Search ticker or name (e.g. China, Technology, Emerging…)" oninput="filterIndexes(this.value)"/>
+
+  <div class="index-grid" id="index-grid">
+
+    <!-- BROAD WORLD -->
+    <div class="index-card">
+      <div class="index-region">🌍 MSCI World &amp; Global</div>
+      <div class="index-row" data-tags="world msci acwi global all country"><span class="index-ticker">ACWI</span><span class="index-name">iShares MSCI ACWI</span><span class="index-ret gain">+8.5%</span></div>
+      <div class="index-row" data-tags="world msci urth global"><span class="index-ticker">URTH</span><span class="index-name">iShares MSCI World</span><span class="index-ret gain">+9.1%</span></div>
+      <div class="index-row" data-tags="world vanguard total vt global"><span class="index-ticker">VT</span><span class="index-name">Vanguard Total World</span><span class="index-ret gain">+8.3%</span></div>
+      <div class="index-row" data-tags="world developed vea ex-us"><span class="index-ticker">VEA</span><span class="index-name">Vanguard Dev Mkts ex-US</span><span class="index-ret gain">+5.8%</span></div>
+      <div class="index-row" data-tags="world iefa developed ex-us ishares"><span class="index-ticker">IEFA</span><span class="index-name">iShares Dev World ex-US</span><span class="index-ret gain">+5.6%</span></div>
+      <div class="index-row" data-tags="world international vxus ex-us vanguard"><span class="index-ticker">VXUS</span><span class="index-name">Vanguard Total Intl</span><span class="index-ret gain">+5.2%</span></div>
+    </div>
+
+    <!-- USA -->
+    <div class="index-card">
+      <div class="index-region">🇺🇸 United States</div>
+      <div class="index-row" data-tags="usa sp500 spy s&p large cap"><span class="index-ticker">SPY</span><span class="index-name">S&amp;P 500</span><span class="index-ret gain">+11.2%</span></div>
+      <div class="index-row" data-tags="usa nasdaq qqq tech large cap"><span class="index-ticker">QQQ</span><span class="index-name">NASDAQ 100</span><span class="index-ret gain">+9.8%</span></div>
+      <div class="index-row" data-tags="usa dow jones dia large cap"><span class="index-ticker">DIA</span><span class="index-name">Dow Jones Industrial</span><span class="index-ret gain">+6.4%</span></div>
+      <div class="index-row" data-tags="usa russell small cap iwm"><span class="index-ticker">IWM</span><span class="index-name">Russell 2000 Small Cap</span><span class="index-ret loss">-2.1%</span></div>
+      <div class="index-row" data-tags="usa total market vti vanguard"><span class="index-ticker">VTI</span><span class="index-name">Vanguard Total US Market</span><span class="index-ret gain">+10.3%</span></div>
+      <div class="index-row" data-tags="usa mid cap ijh sp400"><span class="index-ticker">IJH</span><span class="index-name">S&amp;P 400 Mid Cap</span><span class="index-ret gain">+4.1%</span></div>
+      <div class="index-row" data-tags="usa growth large cap vug vanguard"><span class="index-ticker">VUG</span><span class="index-name">Vanguard Growth</span><span class="index-ret gain">+14.7%</span></div>
+      <div class="index-row" data-tags="usa value vanguard vov"><span class="index-ticker">VTV</span><span class="index-name">Vanguard Value</span><span class="index-ret gain">+6.8%</span></div>
+    </div>
+
+    <!-- UK -->
+    <div class="index-card">
+      <div class="index-region">🇬🇧 United Kingdom</div>
+      <div class="index-row" data-tags="uk ftse100 ewu britain"><span class="index-ticker">EWU</span><span class="index-name">iShares MSCI UK (FTSE 100)</span><span class="index-ret gain">+4.1%</span></div>
+      <div class="index-row" data-tags="uk ftse100 isf london isin"><span class="index-ticker">ISF.L</span><span class="index-name">iShares Core FTSE 100</span><span class="index-ret gain">+4.0%</span></div>
+      <div class="index-row" data-tags="uk ftse250 vmid mid cap london"><span class="index-ticker">VMID.L</span><span class="index-name">Vanguard FTSE 250</span><span class="index-ret gain">+1.8%</span></div>
+      <div class="index-row" data-tags="uk all share vuke london vanguard"><span class="index-ticker">VUKE.L</span><span class="index-name">Vanguard FTSE UK All Share</span><span class="index-ret gain">+3.6%</span></div>
+      <div class="index-row" data-tags="uk gilts iglt bonds treasury"><span class="index-ticker">IGLT.L</span><span class="index-name">iShares UK Gilts</span><span class="index-ret loss">-0.9%</span></div>
+    </div>
+
+    <!-- EUROPE -->
+    <div class="index-card">
+      <div class="index-region">🇪🇺 Europe</div>
+      <div class="index-row" data-tags="europe eurozone ezu broad"><span class="index-ticker">EZU</span><span class="index-name">iShares MSCI Eurozone</span><span class="index-ret gain">+7.2%</span></div>
+      <div class="index-row" data-tags="europe broad vgk vanguard"><span class="index-ticker">VGK</span><span class="index-name">Vanguard FTSE Europe</span><span class="index-ret gain">+6.8%</span></div>
+      <div class="index-row" data-tags="germany dax ewg europe"><span class="index-ticker">EWG</span><span class="index-name">iShares MSCI Germany (DAX)</span><span class="index-ret gain">+8.4%</span></div>
+      <div class="index-row" data-tags="france cac ewq europe"><span class="index-ticker">EWQ</span><span class="index-name">iShares MSCI France (CAC)</span><span class="index-ret gain">+5.9%</span></div>
+      <div class="index-row" data-tags="italy mib ewi europe"><span class="index-ticker">EWI</span><span class="index-name">iShares MSCI Italy (MIB)</span><span class="index-ret gain">+11.2%</span></div>
+      <div class="index-row" data-tags="spain ibex ewp europe"><span class="index-ticker">EWP</span><span class="index-name">iShares MSCI Spain (IBEX)</span><span class="index-ret gain">+9.7%</span></div>
+      <div class="index-row" data-tags="sweden ewd europe scandinavia"><span class="index-ticker">EWD</span><span class="index-name">iShares MSCI Sweden</span><span class="index-ret gain">+6.1%</span></div>
+      <div class="index-row" data-tags="netherlands ewn europe"><span class="index-ticker">EWN</span><span class="index-name">iShares MSCI Netherlands</span><span class="index-ret gain">+4.8%</span></div>
+      <div class="index-row" data-tags="switzerland ewl europe ehl"><span class="index-ticker">EWL</span><span class="index-name">iShares MSCI Switzerland</span><span class="index-ret gain">+3.2%</span></div>
+    </div>
+
+    <!-- JAPAN / ASIA DEVELOPED -->
+    <div class="index-card">
+      <div class="index-region">🇯🇵 Japan &amp; TOPIX</div>
+      <div class="index-row" data-tags="japan nikkei ewj topix"><span class="index-ticker">EWJ</span><span class="index-name">iShares MSCI Japan (Nikkei/TOPIX)</span><span class="index-ret gain">+14.8%</span></div>
+      <div class="index-row" data-tags="japan topix dxj hedged yen"><span class="index-ticker">DXJ</span><span class="index-name">WisdomTree Japan Hdg Eq (TOPIX)</span><span class="index-ret gain">+18.2%</span></div>
+      <div class="index-row" data-tags="japan topix ewjv small cap"><span class="index-ticker">DBJP</span><span class="index-name">Xtrackers MSCI Japan</span><span class="index-ret gain">+13.6%</span></div>
+      <div class="index-row" data-tags="australia asx ewa pacific"><span class="index-ticker">EWA</span><span class="index-name">iShares MSCI Australia (ASX)</span><span class="index-ret gain">+3.8%</span></div>
+      <div class="index-row" data-tags="singapore ews asia pacific developed"><span class="index-ticker">EWS</span><span class="index-name">iShares MSCI Singapore</span><span class="index-ret gain">+5.4%</span></div>
+      <div class="index-row" data-tags="hong kong ewh asia"><span class="index-ticker">EWH</span><span class="index-name">iShares MSCI Hong Kong</span><span class="index-ret loss">-1.2%</span></div>
+      <div class="index-row" data-tags="taiwan ewt semiconductors asia"><span class="index-ticker">EWT</span><span class="index-name">iShares MSCI Taiwan (TSMC)</span><span class="index-ret gain">+18.4%</span></div>
+      <div class="index-row" data-tags="korea ewy samsung asia"><span class="index-ticker">EWY</span><span class="index-name">iShares MSCI South Korea</span><span class="index-ret gain">+4.2%</span></div>
+    </div>
+
+    <!-- CHINA -->
+    <div class="index-card">
+      <div class="index-region">🇨🇳 China</div>
+      <div class="index-row" data-tags="china large cap fxi"><span class="index-ticker">FXI</span><span class="index-name">iShares China Large-Cap</span><span class="index-ret gain">+6.1%</span></div>
+      <div class="index-row" data-tags="china msci mchi broad"><span class="index-ticker">MCHI</span><span class="index-name">iShares MSCI China</span><span class="index-ret gain">+8.4%</span></div>
+      <div class="index-row" data-tags="china internet tech kweb tencent alibaba"><span class="index-ticker">KWEB</span><span class="index-name">KraneShares CSI China Internet</span><span class="index-ret gain">+14.7%</span></div>
+      <div class="index-row" data-tags="china sp gxc broad s&p"><span class="index-ticker">GXC</span><span class="index-name">SPDR S&amp;P China</span><span class="index-ret gain">+7.9%</span></div>
+      <div class="index-row" data-tags="china csi300 ashr a-share onshore"><span class="index-ticker">ASHR</span><span class="index-name">Xtrackers CSI 300 (A-Shares)</span><span class="index-ret gain">+5.2%</span></div>
+      <div class="index-row" data-tags="china tech cqqq nasdaq technology"><span class="index-ticker">CQQQ</span><span class="index-name">Invesco China Technology</span><span class="index-ret gain">+11.3%</span></div>
+      <div class="index-row" data-tags="china small cap ecns"><span class="index-ticker">ECNS</span><span class="index-name">iShares MSCI China Small-Cap</span><span class="index-ret gain">+3.8%</span></div>
+      <div class="index-row" data-tags="china healthcare ev clean hcrd"><span class="index-ticker">KURE</span><span class="index-name">KraneShares MSCI China Health</span><span class="index-ret gain">+2.4%</span></div>
+    </div>
+
+    <!-- EMERGING MARKETS -->
+    <div class="index-card">
+      <div class="index-region">🌍 Emerging Markets</div>
+      <div class="index-row" data-tags="emerging markets eem broad"><span class="index-ticker">EEM</span><span class="index-name">iShares MSCI Emerging Markets</span><span class="index-ret gain">+5.3%</span></div>
+      <div class="index-row" data-tags="emerging markets vwo vanguard"><span class="index-ticker">VWO</span><span class="index-name">Vanguard FTSE Emerging</span><span class="index-ret gain">+4.9%</span></div>
+      <div class="index-row" data-tags="emerging iemg core broad ishares"><span class="index-ticker">IEMG</span><span class="index-name">iShares Core MSCI EM</span><span class="index-ret gain">+5.7%</span></div>
+      <div class="index-row" data-tags="india inda nifty nse"><span class="index-ticker">INDA</span><span class="index-name">iShares MSCI India (NIFTY)</span><span class="index-ret gain">+9.4%</span></div>
+      <div class="index-row" data-tags="brazil ewz sao paulo"><span class="index-ticker">EWZ</span><span class="index-name">iShares MSCI Brazil</span><span class="index-ret loss">-3.1%</span></div>
+      <div class="index-row" data-tags="mexico eww ipc"><span class="index-ticker">EWW</span><span class="index-name">iShares MSCI Mexico</span><span class="index-ret loss">-1.8%</span></div>
+      <div class="index-row" data-tags="turkey tur borsa emerging volatile"><span class="index-ticker">TUR</span><span class="index-name">iShares MSCI Turkey</span><span class="index-ret gain">+22.4%</span></div>
+      <div class="index-row" data-tags="malaysia ewm asia emerging"><span class="index-ticker">EWM</span><span class="index-name">iShares MSCI Malaysia</span><span class="index-ret gain">+2.1%</span></div>
+      <div class="index-row" data-tags="canada ewc tsx north america"><span class="index-ticker">EWC</span><span class="index-name">iShares MSCI Canada (TSX)</span><span class="index-ret gain">+7.3%</span></div>
+    </div>
+
+    <!-- US SECTOR ETFs -->
+    <div class="index-card">
+      <div class="index-region">🏭 US Sector ETFs (SPDR)</div>
+      <div class="index-row" data-tags="technology xlk sector us software hardware"><span class="index-ticker">XLK</span><span class="index-name">Technology Select Sector</span><span class="index-ret gain">+21.4%</span></div>
+      <div class="index-row" data-tags="financials xlf sector us banks insurance"><span class="index-ticker">XLF</span><span class="index-name">Financial Select Sector</span><span class="index-ret gain">+13.2%</span></div>
+      <div class="index-row" data-tags="healthcare xlv sector us pharma biotech"><span class="index-ticker">XLV</span><span class="index-name">Health Care Select Sector</span><span class="index-ret gain">+5.1%</span></div>
+      <div class="index-row" data-tags="energy xle sector us oil gas"><span class="index-ticker">XLE</span><span class="index-name">Energy Select Sector</span><span class="index-ret gain">+7.8%</span></div>
+      <div class="index-row" data-tags="consumer discretionary xly sector retail amazon"><span class="index-ticker">XLY</span><span class="index-name">Consumer Discretionary Select</span><span class="index-ret gain">+6.9%</span></div>
+      <div class="index-row" data-tags="consumer staples xlp sector food beverages"><span class="index-ticker">XLP</span><span class="index-name">Consumer Staples Select</span><span class="index-ret gain">+2.8%</span></div>
+      <div class="index-row" data-tags="industrials xli sector aerospace defense"><span class="index-ticker">XLI</span><span class="index-name">Industrials Select Sector</span><span class="index-ret gain">+8.6%</span></div>
+      <div class="index-row" data-tags="materials xlb sector mining chemicals"><span class="index-ticker">XLB</span><span class="index-name">Materials Select Sector</span><span class="index-ret gain">+4.3%</span></div>
+      <div class="index-row" data-tags="utilities xlu sector electricity defensive"><span class="index-ticker">XLU</span><span class="index-name">Utilities Select Sector</span><span class="index-ret gain">+3.1%</span></div>
+      <div class="index-row" data-tags="communication xlc sector media google meta"><span class="index-ticker">XLC</span><span class="index-name">Communication Services Select</span><span class="index-ret gain">+11.7%</span></div>
+      <div class="index-row" data-tags="real estate xlre reit sector"><span class="index-ticker">XLRE</span><span class="index-name">Real Estate Select Sector</span><span class="index-ret loss">-1.4%</span></div>
+    </div>
+
+    <!-- THEMATIC & ALTERNATIVE -->
+    <div class="index-card">
+      <div class="index-region">🚀 Thematic &amp; Alternative</div>
+      <div class="index-row" data-tags="innovation ark arkk growth disruptive"><span class="index-ticker">ARKK</span><span class="index-name">ARK Innovation</span><span class="index-ret loss">-4.2%</span></div>
+      <div class="index-row" data-tags="semiconductors soxx soxq chips ai"><span class="index-ticker">SOXX</span><span class="index-name">iShares Semiconductor</span><span class="index-ret gain">+28.6%</span></div>
+      <div class="index-row" data-tags="ai artificial intelligence botz robotics"><span class="index-ticker">BOTZ</span><span class="index-name">Global X Robotics &amp; AI</span><span class="index-ret gain">+22.1%</span></div>
+      <div class="index-row" data-tags="clean energy icln solar wind green"><span class="index-ticker">ICLN</span><span class="index-name">iShares Global Clean Energy</span><span class="index-ret loss">-3.8%</span></div>
+      <div class="index-row" data-tags="gold gld commodity precious metals"><span class="index-ticker">GLD</span><span class="index-name">SPDR Gold Shares</span><span class="index-ret gain">+8.9%</span></div>
+      <div class="index-row" data-tags="silver slv commodity precious metals"><span class="index-ticker">SLV</span><span class="index-name">iShares Silver Trust</span><span class="index-ret gain">+6.2%</span></div>
+      <div class="index-row" data-tags="commodities broad pdbc oil metals"><span class="index-ticker">PDBC</span><span class="index-name">Invesco Optimum Yield Cmdty</span><span class="index-ret gain">+3.4%</span></div>
+      <div class="index-row" data-tags="infrastructure igf toll roads utilities"><span class="index-ticker">IGF</span><span class="index-name">iShares Global Infrastructure</span><span class="index-ret gain">+5.7%</span></div>
+      <div class="index-row" data-tags="reit vnq real estate vanguard property"><span class="index-ticker">VNQ</span><span class="index-name">Vanguard Real Estate REIT</span><span class="index-ret loss">-0.8%</span></div>
+    </div>
+
+    <!-- BONDS / FIXED INCOME -->
+    <div class="index-card">
+      <div class="index-region">📋 Fixed Income &amp; Bonds</div>
+      <div class="index-row" data-tags="bonds agg aggregate investment grade us"><span class="index-ticker">AGG</span><span class="index-name">iShares Core US Aggregate Bond</span><span class="index-ret loss">-0.4%</span></div>
+      <div class="index-row" data-tags="bonds treasury tlt long duration 20yr"><span class="index-ticker">TLT</span><span class="index-name">iShares 20+ Year Treasury</span><span class="index-ret loss">-4.8%</span></div>
+      <div class="index-row" data-tags="bonds tips inflation protected treasury"><span class="index-ticker">TIP</span><span class="index-name">iShares TIPS Bond (Inflation)</span><span class="index-ret gain">+0.8%</span></div>
+      <div class="index-row" data-tags="bonds emerging market emb sovereign"><span class="index-ticker">EMB</span><span class="index-name">iShares JP Morgan EM Bond</span><span class="index-ret gain">+2.1%</span></div>
+      <div class="index-row" data-tags="bonds high yield hyg corporate junk"><span class="index-ticker">HYG</span><span class="index-name">iShares High Yield Corp Bond</span><span class="index-ret gain">+3.4%</span></div>
+      <div class="index-row" data-tags="bonds investment grade lqd corporate"><span class="index-ticker">LQD</span><span class="index-name">iShares Investment Grade Corp</span><span class="index-ret gain">+0.9%</span></div>
+    </div>
+
+    <!-- MONEY MARKET -->
+    <div class="index-card">
+      <div class="index-region">💵 Money Market &amp; Cash ETFs</div>
+      <div class="index-row" data-tags="money market sgov t-bills 0-3 month short duration cash"><span class="index-ticker">SGOV</span><span class="index-name">iShares 0-3M Treasury Bill</span><span class="index-ret gain">+5.2%</span></div>
+      <div class="index-row" data-tags="money market bil t-bills 1-3 month cash short"><span class="index-ticker">BIL</span><span class="index-name">SPDR 1-3 Month T-Bill</span><span class="index-ret gain">+5.1%</span></div>
+      <div class="index-row" data-tags="money market shy treasury 1-3 year short term"><span class="index-ticker">SHY</span><span class="index-name">iShares 1-3 Year Treasury</span><span class="index-ret gain">+4.8%</span></div>
+      <div class="index-row" data-tags="money market ultra short bond jpst cash"><span class="index-ticker">JPST</span><span class="index-name">JPMorgan Ultra-Short Income</span><span class="index-ret gain">+5.3%</span></div>
+      <div class="index-row" data-tags="money market ultra short gsst cash bond"><span class="index-ticker">GSST</span><span class="index-name">Goldman Sachs Access Treasury</span><span class="index-ret gain">+5.0%</span></div>
+      <div class="index-row" data-tags="money market near cash csh uk sterling london"><span class="index-ticker">CSH2.L</span><span class="index-name">Lyxor Smart Overnight Return (GBP)</span><span class="index-ret gain">+5.1%</span></div>
+      <div class="index-row" data-tags="money market near cash xstr short term sterling uk"><span class="index-ticker">XSTR.L</span><span class="index-name">Xtrackers II UK Short-Term Gov't</span><span class="index-ret gain">+4.7%</span></div>
+      <div class="index-row" data-tags="money market euro cash eur estr overnight"><span class="index-ticker">XEON.L</span><span class="index-name">Xtrackers II EUR Overnight (€STR)</span><span class="index-ret gain">+3.9%</span></div>
+      <div style="padding:8px 0 2px;font-size:11px;color:var(--muted);font-style:italic">Yields approximate gross. Tax treatment varies by domicile.</div>
+    </div>
+
+  </div><!-- /index-grid -->
+</div><!-- /indexes -->
+
+<!-- ══ WATCHLIST ══ -->
+<div id="watchlist" class="page">
+  <div class="page-title">Watchlist &amp; Alerts</div>
+  <div class="page-sub">Track stocks you don't yet own. Set price alerts.</div>
+  <div class="flex-between mb-16">
+    <div class="flex gap-8"><input placeholder="Add ticker (e.g. AMZN)" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;width:200px"/><button class="btn btn-primary btn-sm">+ Add</button></div>
+  </div>
+  <div class="card"><div class="table-wrap"><table>
+    <thead><tr><th>Ticker</th><th>Name</th><th class="r">Price</th><th class="r">Change</th><th class="r">52W High</th><th class="r">52W Low</th><th>Alert</th><th>Actions</th></tr></thead>
+    <tbody>
+      <tr><td><strong>AMZN</strong></td><td>Amazon.com</td><td class="r">$186.40</td><td class="r gain">+1.4%</td><td class="r">$201.20</td><td class="r">$118.35</td><td><span class="badge badge-blue">@ $190</span></td><td><button class="btn btn-ghost btn-sm">⚙</button> <button class="btn btn-ghost btn-sm" style="color:#dc2626">✕</button></td></tr>
+      <tr><td><strong>META</strong></td><td>Meta Platforms</td><td class="r">$532.80</td><td class="r loss">-0.8%</td><td class="r">$589.10</td><td class="r">$279.40</td><td><span class="muted" style="font-size:11px">—</span></td><td><button class="btn btn-ghost btn-sm">⚙</button> <button class="btn btn-ghost btn-sm" style="color:#dc2626">✕</button></td></tr>
+      <tr><td><strong>ASML</strong></td><td>ASML Holding</td><td class="r">€897.60</td><td class="r gain">+2.1%</td><td class="r">€1,012</td><td class="r">€614.80</td><td><span class="badge" style="background:#fef9c3;color:#854d0e">🔔 Triggered</span></td><td><button class="btn btn-ghost btn-sm">⚙</button> <button class="btn btn-ghost btn-sm" style="color:#dc2626">✕</button></td></tr>
+    </tbody>
+  </table></div></div>
+</div>
+
+<!-- ══ THINK PIECES ══ -->
+<div id="think" class="page">
+  <div class="page-title">Think Pieces</div>
+  <div class="page-sub">Long-form analysis visible on your public portfolio page.</div>
+  <div class="flex-between mb-16">
+    <div class="pill-nav"><div class="pill active">All</div><div class="pill">Published</div><div class="pill">Drafts</div></div>
+    <button class="btn btn-primary btn-sm">+ New Article</button>
+  </div>
+  <div class="grid-3">
+    <div class="article-card"><div class="article-img">📡</div><div class="article-body"><div class="article-title">Why AI Infrastructure Capex Will Stay Elevated Through 2027</div><div class="article-meta">14 Aug 2025 · <span class="badge badge-bull" style="font-size:10px">Published</span></div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn btn-ghost btn-sm">Edit</button><button class="btn btn-ghost btn-sm">Preview</button></div></div></div>
+    <div class="article-card"><div class="article-img">🏦</div><div class="article-body"><div class="article-title">UK Banks: Value Trap or Turnaround Story?</div><div class="article-meta">2 Jul 2025 · <span class="badge badge-neut" style="font-size:10px">Draft</span></div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn btn-ghost btn-sm">Edit</button><button class="btn btn-ghost btn-sm">Preview</button></div></div></div>
+    <div class="article-card" style="border:2px dashed #e2e8f0;background:transparent;display:flex;align-items:center;justify-content:center;min-height:200px"><div style="text-align:center;color:var(--muted)"><div style="font-size:28px;margin-bottom:8px">+</div><div style="font-size:13px;font-weight:600">New Think Piece</div></div></div>
+  </div>
+</div>
+
+<!-- ══ SNAPSHOTS ══ -->
+<div id="snapshots" class="page">
+  <div class="page-title">Portfolio Snapshots</div>
+  <div class="page-sub">Point-in-time records. Created manually or monthly automatically.</div>
+  <div class="flex-between mb-16"><button class="btn btn-primary btn-sm">📸 Create Snapshot Now</button></div>
+  <div class="grid-3">
+    <div class="snapshot-card"><div class="flex-between mb-8"><strong>14 Aug 2025</strong><span class="badge badge-blue">Latest</span></div><div style="font-size:22px;font-weight:700;margin-bottom:4px">$47,382</div><div class="gain" style="font-size:13px;margin-bottom:8px">+18.4% return</div><div style="font-size:11px;color:var(--muted)">5 positions · 4 sectors</div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn btn-ghost btn-sm" style="flex:1">View</button><button class="btn btn-ghost btn-sm" style="flex:1">Share</button></div></div>
+    <div class="snapshot-card"><div class="flex-between mb-8"><strong>1 Aug 2025</strong><span class="badge badge-neut">Monthly</span></div><div style="font-size:22px;font-weight:700;margin-bottom:4px">$44,210</div><div class="gain" style="font-size:13px;margin-bottom:8px">+10.5% return</div><div style="font-size:11px;color:var(--muted)">5 positions · 4 sectors</div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn btn-ghost btn-sm" style="flex:1">View</button><button class="btn btn-ghost btn-sm" style="flex:1">Share</button></div></div>
+    <div class="snapshot-card"><div class="flex-between mb-8"><strong>1 Jul 2025</strong><span class="badge badge-neut">Monthly</span></div><div style="font-size:22px;font-weight:700;margin-bottom:4px">$41,580</div><div class="gain" style="font-size:13px;margin-bottom:8px">+3.9% return</div><div style="font-size:11px;color:var(--muted)">4 positions · 3 sectors</div><div style="margin-top:10px;display:flex;gap:6px"><button class="btn btn-ghost btn-sm" style="flex:1">View</button><button class="btn btn-ghost btn-sm" style="flex:1">Share</button></div></div>
+  </div>
+</div>
+
+<!-- ══ PUBLIC VIEW ══ -->
+<div id="public" class="page">
+  <div class="page-title">Public View Preview</div>
+  <div class="page-sub">Exactly what visitors see at your public URL — read-only, no login required.</div>
+  <div class="info-banner" style="background:linear-gradient(135deg,#ede9fe,#dbeafe);border-left:4px solid #4f46e5;color:#1e1b4b;gap:8px;flex-wrap:wrap">
+    🌐 Public URL: <strong>yourname.vercel.app/portfolio</strong>
+    <button class="btn btn-ghost btn-sm" style="margin-left:auto">Copy Link</button>
+    <button class="btn btn-ghost btn-sm">Open ↗</button>
+    <span style="font-size:11px;opacity:.7;border-left:1px solid #c7d2fe;padding-left:10px">Hidden from public: Log Trade form · Journal drafts · Unpublished think pieces</span>
+  </div>
+
+  <!-- Profile header -->
+  <div class="public-header">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 style="margin:0 0 4px">SM's Investment Portfolio</h1>
+        <p style="opacity:.8;font-size:13px;margin:0">Long-term, conviction-based investing · Updated live · Last updated 14 Aug 2025</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)">Follow</button>
+        <button class="btn btn-ghost btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)">Share</button>
+      </div>
+    </div>
+    <div class="flex gap-12" style="margin-top:18px;flex-wrap:wrap">
+      <div class="public-kpi"><div class="public-kpi-label">Portfolio Value</div><div class="public-kpi-value">$118,217</div></div>
+      <div class="public-kpi"><div class="public-kpi-label">Total Return</div><div class="public-kpi-value" style="color:#4ade80">+18.2%</div></div>
+      <div class="public-kpi"><div class="public-kpi-label">vs S&amp;P 500</div><div class="public-kpi-value" style="color:#4ade80">+7.2%</div></div>
+      <div class="public-kpi"><div class="public-kpi-label">vs MSCI World</div><div class="public-kpi-value" style="color:#4ade80">+9.9%</div></div>
+      <div class="public-kpi"><div class="public-kpi-label">Sharpe (1Y)</div><div class="public-kpi-value">1.84</div></div>
+      <div class="public-kpi"><div class="public-kpi-label">Win Rate</div><div class="public-kpi-value">72%</div></div>
+    </div>
+  </div>
+
+  <!-- Performance Chart (interactive period + Sharpe window) -->
+  <div class="card mb-16">
+    <div class="card-header" style="flex-direction:column;align-items:stretch;gap:10px">
+      <div class="flex-between">
+        <span class="card-title">📈 Performance vs Benchmarks</span>
+        <!-- Series legend (read-only, no toggles) -->
+        <div class="flex gap-8" style="flex-wrap:wrap;font-size:12px">
+          <span style="color:#4f46e5;font-weight:600">● Portfolio</span>
+          <span style="color:#16a34a">– S&amp;P 500</span>
+          <span style="color:#f59e0b">– NASDAQ</span>
+          <span style="color:#94a3b8">– FTSE 100</span>
+          <span style="color:#ec4899">– MSCI World</span>
+        </div>
+      </div>
+      <div class="flex-between" style="flex-wrap:wrap;gap:8px">
+        <!-- Period selector -->
+        <div class="chart-controls-row">
+          <span style="font-size:11px;color:#64748b;font-weight:600;margin-right:4px">Period:</span>
+          <button class="period-btn pub-period-btn" data-pp="1M"     onclick="setPubPeriod('1M')">1M</button>
+          <button class="period-btn pub-period-btn" data-pp="3M"     onclick="setPubPeriod('3M')">3M</button>
+          <button class="period-btn pub-period-btn" data-pp="6M"     onclick="setPubPeriod('6M')">6M</button>
+          <button class="period-btn pub-period-btn" data-pp="YTD"    onclick="setPubPeriod('YTD')">YTD</button>
+          <button class="period-btn pub-period-btn active" data-pp="1Y" onclick="setPubPeriod('1Y')">1Y</button>
+          <button class="period-btn pub-period-btn" data-pp="3Y"     onclick="setPubPeriod('3Y')">3Y</button>
+          <button class="period-btn pub-period-btn" data-pp="5Y"     onclick="setPubPeriod('5Y')">5Y</button>
+          <button class="period-btn pub-period-btn" data-pp="All"    onclick="setPubPeriod('All')">All</button>
+          <button class="period-btn pub-period-btn" data-pp="Custom" onclick="setPubPeriod('Custom')">Custom ▾</button>
+          <div id="pub-custom-range" class="custom-range">
+            <input type="date" id="pub-custom-start" value="2024-08-14" min="2020-08-14" max="2025-08-14"/>
+            <span style="font-size:11px;color:#64748b">→</span>
+            <input type="date" id="pub-custom-end" value="2025-08-14" min="2020-08-14" max="2025-08-14"/>
+            <button onclick="applyPubCustomRange()">Apply</button>
+          </div>
+        </div>
+        <!-- Rolling Sharpe window -->
+        <div class="chart-controls-row">
+          <span style="font-size:11px;color:#7c3aed;font-weight:700;margin-right:4px">Sharpe:</span>
+          <button class="sharpe-btn pub-sharpe-btn active" data-pw="90"  onclick="setPubWindow(90)">90d</button>
+          <button class="sharpe-btn pub-sharpe-btn"        data-pw="180" onclick="setPubWindow(180)">180d</button>
+          <button class="sharpe-btn pub-sharpe-btn"        data-pw="365" onclick="setPubWindow(365)">365d</button>
+          <button class="sharpe-btn pub-sharpe-btn"        data-pw="730" onclick="setPubWindow(730)">730d</button>
+          <span style="border-left:1px solid #e2e8f0;height:20px;margin:0 4px"></span>
+          <span id="pub-tog-mode-pct" class="series-toggle active" style="color:#475569" onclick="setPubChartMode('pct')">%</span>
+          <span id="pub-tog-mode-nom" class="series-toggle" style="color:#475569" onclick="setPubChartMode('nom')">$</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body" style="padding-bottom:0">
+      <div style="position:relative" id="pub-chart-outer">
+        <svg id="pub-perf-chart" viewBox="0 0 620 210" style="width:100%;height:auto;display:block"></svg>
+        <!-- Crosshair overlay -->
+        <svg id="pub-overlay-svg" viewBox="0 0 620 210" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none">
+          <line id="pub-crosshair-v" x1="0" y1="15" x2="0" y2="180" stroke="#64748b" stroke-width="1" stroke-dasharray="4,3" display="none"/>
+          <circle id="pub-dot-portfolio" r="5"   fill="#4f46e5" stroke="#fff" stroke-width="2" display="none"/>
+          <circle id="pub-dot-sp500"     r="3.5" fill="#16a34a" stroke="#fff" stroke-width="1.5" display="none"/>
+          <circle id="pub-dot-nasdaq"    r="3.5" fill="#f59e0b" stroke="#fff" stroke-width="1.5" display="none"/>
+          <circle id="pub-dot-ftse"      r="3.5" fill="#94a3b8" stroke="#fff" stroke-width="1.5" display="none"/>
+          <circle id="pub-dot-msci"      r="3.5" fill="#ec4899" stroke="#fff" stroke-width="1.5" display="none"/>
+          <rect id="pub-chart-hit" x="54" y="15" width="556" height="165" fill="transparent" style="cursor:crosshair" pointer-events="all"/>
+        </svg>
+        <div class="chart-tooltip" id="pub-chart-tooltip" style="display:none">
+          <div class="tt-date" id="pub-tt-date">—</div>
+          <div class="tt-header">
+            <span class="tt-col-head">Series</span>
+            <span class="tt-col-head" style="text-align:right">Return</span>
+            <span class="tt-col-head" style="text-align:right">Sharpe</span>
+          </div>
+          <div class="tt-row"><span class="tt-label" style="color:#818cf8">● Portfolio</span><span class="tt-ret" id="pub-tt-r-portfolio">—</span><span class="tt-sharpe" id="pub-tt-s-portfolio">—</span></div>
+          <div class="tt-row"><span class="tt-label" style="color:#4ade80">– S&amp;P 500</span>  <span class="tt-ret" id="pub-tt-r-sp500">—</span>    <span class="tt-sharpe" id="pub-tt-s-sp500">—</span></div>
+          <div class="tt-row"><span class="tt-label" style="color:#fcd34d">– NASDAQ</span>   <span class="tt-ret" id="pub-tt-r-nasdaq">—</span>   <span class="tt-sharpe" id="pub-tt-s-nasdaq">—</span></div>
+          <div class="tt-row"><span class="tt-label" style="color:#cbd5e1">– FTSE 100</span> <span class="tt-ret" id="pub-tt-r-ftse">—</span>     <span class="tt-sharpe" id="pub-tt-s-ftse">—</span></div>
+          <div class="tt-row"><span class="tt-label" style="color:#f9a8d4">– MSCI World</span><span class="tt-ret" id="pub-tt-r-msci">—</span>   <span class="tt-sharpe" id="pub-tt-s-msci">—</span></div>
+          <hr class="tt-divider"/>
+          <div class="tt-window" id="pub-tt-window">Rolling window: 20d</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Time Machine -->
+  <div class="time-machine" id="pub-tm-bar" style="margin-bottom:16px">
+    <span>🕐 Time Machine:</span>
+    <input type="date" id="pub-tm-date" value="2025-08-14" min="2024-08-15" max="2025-08-14"/>
+    <button class="btn btn-sm" onclick="applyPubTimeMachine()">View Portfolio</button>
+    <span class="tm-badge" id="pub-tm-badge">Showing: Current — 14 Aug 2025</span>
+    <button class="tm-back hidden" id="pub-tm-back" onclick="resetPubTimeMachine()">← Back to current</button>
+  </div>
+
+  <!-- Holdings (dynamic) -->
+  <div class="card mb-16">
+    <div class="card-header"><span class="card-title" id="pub-holdings-title">📋 Holdings — 14 Aug 2025</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Ticker</th><th>Name</th><th>Sector</th><th>Country</th><th class="r">Shares</th><th class="r">Avg Cost</th><th class="r">Price</th><th class="r">Mkt Value</th><th class="r">Return</th><th class="r">Weight</th></tr></thead>
+        <tbody id="pub-holdings-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Sector + Country allocations (dynamic) -->
+  <div class="grid-2 mb-16">
+    <div class="card">
+      <div class="card-header"><span class="card-title">🌐 Sector Allocation</span></div>
+      <div class="card-body" id="pub-sector-alloc"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">🗺 Country Allocation</span></div>
+      <div class="card-body" id="pub-country-alloc"></div>
+    </div>
+  </div>
+
+  <!-- Risk & Performance Metrics -->
+  <div class="card mb-16">
+    <div class="card-header"><span class="card-title">📊 Risk &amp; Performance Metrics</span></div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Win Rate</div><div class="kpi-value">72%</div><div class="kpi-sub">13 of 18 closed</div></div>
+      <div class="kpi"><div class="kpi-label">Avg Hold Period</div><div class="kpi-value">147d</div><div class="kpi-sub">Long-term focus</div></div>
+      <div class="kpi"><div class="kpi-label">Best Trade</div><div class="kpi-value gain">+41.2%</div><div class="kpi-sub">NVDA Jul 2024</div></div>
+      <div class="kpi"><div class="kpi-label">Max Drawdown</div><div class="kpi-value loss">−8.4%</div><div class="kpi-sub">Mar 2025</div></div>
+      <div class="kpi"><div class="kpi-label">Ann. Volatility</div><div class="kpi-value">22.0%</div><div class="kpi-sub">Portfolio σ</div></div>
+      <div class="kpi"><div class="kpi-label">Beta vs S&amp;P</div><div class="kpi-value">1.31</div><div class="kpi-sub">Higher risk/reward</div></div>
+    </div>
+  </div>
+
+  <!-- Sharpe Ratios -->
+  <div class="card mb-16">
+    <div class="card-header">
+      <span class="card-title">⚡ Sharpe Ratios vs Benchmarks</span>
+      <span style="font-size:11px;color:var(--muted)">Risk-free: 5.0% · Annualised · Sharpe = (Ann. Return − Rf) / Ann. Vol</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Series</th>
+            <th class="r">6M Return</th><th class="r">6M Vol</th><th class="r">6M Sharpe</th>
+            <th class="r">1Y Return</th><th class="r">1Y Vol</th><th class="r">1Y Sharpe</th>
+            <th class="r">Sharpe Alpha</th>
+          </tr>
+        </thead>
+        <tbody id="pub-sharpe-body">
+          <tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted)">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Trade Log with reasoning -->
+  <div class="card mb-16">
+    <div class="card-header"><span class="card-title">📝 Trade Log with Reasoning</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Ticker</th><th>Type</th><th class="r">Shares</th><th class="r">Price</th><th class="r">Total</th><th>Investment Thesis</th><th>Sentiment</th></tr></thead>
+        <tbody>
+          <tr><td>14 Aug 2025</td><td><strong>TSLA</strong></td><td><span class="badge badge-bear">SELL</span></td><td class="r">10</td><td class="r">$198.74</td><td class="r">$1,987</td><td style="font-size:12px;max-width:220px;line-height:1.5">Trimmed position. Weak Q3 deliveries. Redeploying into higher-conviction names.</td><td><span class="badge badge-bear">Bearish</span></td></tr>
+          <tr><td>2 Jul 2025</td><td><strong>NVDA</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">95</td><td class="r">$318.40</td><td class="r">$30,248</td><td style="font-size:12px;max-width:220px;line-height:1.5">AI infrastructure capex boom. Blackwell ramp. Margins stabilising &gt;75%.</td><td><span class="badge badge-bull">Bullish</span></td></tr>
+          <tr><td>18 Jun 2025</td><td><strong>TSLA</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">35</td><td class="r">$248.00</td><td class="r">$8,680</td><td style="font-size:12px;max-width:220px;line-height:1.5">Speculative. Watching Q3 deliveries. FSD regulatory path uncertain.</td><td><span class="badge badge-neut">Neutral</span></td></tr>
+          <tr><td>5 May 2025</td><td><strong>BARC.L</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">2,000</td><td class="r">£1.82</td><td class="r">£3,640</td><td style="font-size:12px;max-width:220px;line-height:1.5">UK banks re-rating on rate normalisation. Dividend yield 5.2%. Cheap vs. history.</td><td><span class="badge badge-bull">Bullish</span></td></tr>
+          <tr><td>12 Mar 2025</td><td><strong>BRK.B</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">25</td><td class="r">$348.20</td><td class="r">$8,705</td><td style="font-size:12px;max-width:220px;line-height:1.5">Quality compounder. Insurance float advantage + energy transition positioning.</td><td><span class="badge badge-bull">Bullish</span></td></tr>
+          <tr><td>20 Jan 2025</td><td><strong>MSFT</strong></td><td><span class="badge badge-bull">BUY</span></td><td class="r">45</td><td class="r">$380.10</td><td class="r">$17,105</td><td style="font-size:12px;max-width:220px;line-height:1.5">Azure AI tailwind. Copilot monetisation underway. Durable moat across enterprise.</td><td><span class="badge badge-bull">Bullish</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Investment Journal (read-only) -->
+  <div class="mb-16">
+    <div style="font-size:16px;font-weight:700;margin-bottom:12px">📓 Investment Journal</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="flex gap-8 mb-8"><strong>NVDA — AI Infrastructure Play</strong><span class="badge badge-bull">Bullish</span><span style="color:#f59e0b;font-size:12px">⭐⭐⭐⭐⭐</span></div>
+            <div><span class="tag">AI</span><span class="tag">semiconductors</span><span class="tag">growth</span><span class="muted" style="font-size:11px;margin-left:8px">14 Aug 2025 · 1 trade</span></div>
+          </div>
+        </div>
+        <div class="card-body">
+          <p style="font-size:13px;line-height:1.7;margin-bottom:10px">NVDA is positioned to dominate the AI accelerator market through 2026+. Blackwell architecture is a significant leap in throughput. Hyperscalers committing $200B+ in capex. Gross margins stabilising above 75%.</p>
+          <div style="border-top:1px solid var(--border);padding-top:10px;font-size:12px;color:var(--muted)"><strong style="color:var(--text)">Trades:</strong><span class="badge badge-bull" style="margin:0 5px">BUY 95 @ $318.40</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="flex gap-8 mb-8"><strong>TSLA — Fading Conviction</strong><span class="badge badge-neut">Neutral</span><span style="color:#f59e0b;font-size:12px">⭐⭐</span></div>
+            <div><span class="tag">EV</span><span class="tag">consumer</span><span class="muted" style="font-size:11px;margin-left:8px">2 Jul 2025 · 2 trades</span></div>
+          </div>
+        </div>
+        <div class="card-body">
+          <p style="font-size:13px;line-height:1.7">EV price war intensifying. Cybertruck quality concerns. FSD regulatory path slower than hoped. Watching Q3 delivery numbers before adding or trimming.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Think Pieces — published only -->
+  <div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:12px">💡 Think Pieces <span style="font-size:12px;font-weight:400;color:var(--muted)">— Published only · Drafts are private</span></div>
+    <div class="grid-3">
+      <div class="article-card">
+        <div class="article-img">📡</div>
+        <div class="article-body">
+          <div class="article-title">Why AI Infrastructure Capex Will Stay Elevated Through 2027</div>
+          <div class="article-meta">14 Aug 2025 · <span class="badge badge-bull" style="font-size:10px">Published</span></div>
+          <p style="font-size:12px;line-height:1.6;color:var(--muted);margin-top:8px">An analysis of hyperscaler spending commitments, NVIDIA's roadmap, and the infrastructure buildout required for large-scale AI deployment through 2027.</p>
+          <button class="btn btn-ghost btn-sm" style="margin-top:10px">Read Article →</button>
+        </div>
+      </div>
+      <div class="article-card" style="opacity:.35;pointer-events:none;filter:blur(1px)">
+        <div class="article-img">🔒</div>
+        <div class="article-body">
+          <div class="article-title" style="color:var(--muted)">Draft — not yet published</div>
+          <div class="article-meta">Coming soon</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS ══ -->
+<div id="settings" class="page">
+  <div class="page-title">Settings</div>
+  <div class="page-sub">Account, portfolio configuration, and integrations.</div>
+  <div class="info-banner">🌐 <strong>yourname.vercel.app/portfolio</strong><button class="btn btn-ghost btn-sm" style="margin-left:auto">Copy URL</button></div>
+  <div class="grid-2">
+    <div class="card card-body">
+      <div style="font-weight:600;font-size:14px;margin-bottom:14px">Portfolio Settings</div>
+      <div class="form-group" style="margin-bottom:12px"><label>Portfolio Name</label><input value="SM's Investment Portfolio"/></div>
+      <div class="form-group" style="margin-bottom:12px"><label>Starting Cash ($)</label><input type="number" value="40000"/></div>
+      <div class="form-group" style="margin-bottom:12px"><label>Base Currency</label><select><option>USD</option><option>GBP</option><option>EUR</option></select></div>
+      <div class="form-group" style="margin-bottom:12px"><label>Finnhub API Key</label><input type="password" value="••••••••••••••••"/></div>
+      <button class="btn btn-primary">Save Changes</button>
+    </div>
+    <div class="card card-body">
+      <div style="font-weight:600;font-size:14px;margin-bottom:14px">Public Page Settings</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px"><input type="checkbox" checked style="width:16px;height:16px;accent-color:var(--brand)"/>Show live holdings &amp; weights</label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px"><input type="checkbox" checked style="width:16px;height:16px;accent-color:var(--brand)"/>Show trade history with reasoning</label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px"><input type="checkbox" checked style="width:16px;height:16px;accent-color:var(--brand)"/>Show benchmark comparison (incl. MSCI World)</label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px"><input type="checkbox" style="width:16px;height:16px;accent-color:var(--brand)"/>Show exact portfolio value</label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px"><input type="checkbox" checked style="width:16px;height:16px;accent-color:var(--brand)"/>Show think pieces</label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px"><input type="checkbox" checked style="width:16px;height:16px;accent-color:var(--brand)"/>Show Sharpe ratio &amp; risk metrics</label>
+      </div>
+      <button class="btn btn-primary">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// PAGE NAVIGATION
+// ══════════════════════════════════════════════════════════
+function show(id) {
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  var pg = document.getElementById(id); if(pg) pg.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(el){
+    el.classList.toggle('active', el.dataset.page === id);
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// INDEX SEARCH
+// ══════════════════════════════════════════════════════════
+function filterIndexes(q) {
+  var term = q.toLowerCase().trim();
+  document.querySelectorAll('#index-grid .index-row').forEach(function(row) {
+    var tags  = (row.getAttribute('data-tags') || '').toLowerCase();
+    var text  = row.textContent.toLowerCase();
+    row.classList.toggle('hidden', term !== '' && !tags.includes(term) && !text.includes(term));
+  });
+  // Hide cards that have all rows hidden
+  document.querySelectorAll('#index-grid .index-card').forEach(function(card) {
+    var rows    = card.querySelectorAll('.index-row');
+    var visible = Array.from(rows).some(function(r){ return !r.classList.contains('hidden'); });
+    card.style.display = visible ? '' : 'none';
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// PORTFOLIO SNAPSHOTS (Time Machine data)
+// ══════════════════════════════════════════════════════════
+var SNAPSHOTS = [
+  {
+    dateObj: new Date(2024, 8, 1),
+    dateLabel: '1 Sep 2024',
+    totalValue: 100000, cash: 100000, gainPct: 0.0, positions: 0, sectors: 0,
+    holdings: [],
+    sector: [{name:'Cash', pct:100, color:'#e2e8f0'}],
+    country: [{name:'Cash', pct:100, color:'#e2e8f0'}]
+  },
+  {
+    dateObj: new Date(2025, 0, 20),
+    dateLabel: '20 Jan 2025',
+    totalValue: 101129, cash: 82895, gainPct: 1.1, positions: 1, sectors: 1,
+    holdings: [
+      {ticker:'MSFT', name:'Microsoft Corp', shares:45, cost:380.10, price:405.20, cur:'$', sector:'Technology', country:'\u{1F1FA}\u{1F1F8} USA', pnl:6.6, wt:18.0}
+    ],
+    sector: [
+      {name:'Technology', pct:18, color:'#4f46e5'},
+      {name:'Cash',       pct:82, color:'#e2e8f0'}
+    ],
+    country: [
+      {name:'USA',  pct:18, color:'#4f46e5'},
+      {name:'Cash', pct:82, color:'#e2e8f0'}
+    ]
+  },
+  {
+    dateObj: new Date(2025, 4, 5),
+    dateLabel: '5 May 2025',
+    totalValue: 101974, cash: 69510, gainPct: 2.0, positions: 3, sectors: 2,
+    holdings: [
+      {ticker:'MSFT',  name:'Microsoft Corp',    shares:45,   cost:380.10, price:395.80, cur:'$', sector:'Technology', country:'\u{1F1FA}\u{1F1F8} USA', pnl:4.1, wt:17.5},
+      {ticker:'BRK.B', name:'Berkshire Hathaway', shares:25,   cost:348.20, price:378.50, cur:'$', sector:'Finance',   country:'\u{1F1FA}\u{1F1F8} USA', pnl:8.7, wt:9.3},
+      {ticker:'BARC.L',name:'Barclays PLC',       shares:2000, cost:1.82,   price:2.02,   cur:'\u{00A3}', sector:'Finance', country:'\u{1F1EC}\u{1F1E7} UK', pnl:11.0, wt:5.1}
+    ],
+    sector: [
+      {name:'Technology', pct:17, color:'#4f46e5'},
+      {name:'Finance',    pct:15, color:'#7c3aed'},
+      {name:'Cash',       pct:68, color:'#e2e8f0'}
+    ],
+    country: [
+      {name:'USA',  pct:27, color:'#4f46e5'},
+      {name:'UK',   pct:5,  color:'#16a34a'},
+      {name:'Cash', pct:68, color:'#e2e8f0'}
+    ]
+  },
+  {
+    dateObj: new Date(2025, 7, 14),
+    dateLabel: '14 Aug 2025',
+    totalValue: 118217, cash: 32569, gainPct: 18.2, positions: 5, sectors: 3,
+    holdings: [
+      {ticker:'NVDA',  name:'NVIDIA Corp',        shares:95,   cost:318.40, price:487.22, cur:'$', sector:'Technology', country:'\u{1F1FA}\u{1F1F8} USA', pnl:53.0, wt:39.2},
+      {ticker:'MSFT',  name:'Microsoft Corp',     shares:45,   cost:380.10, price:412.55, cur:'$', sector:'Technology', country:'\u{1F1FA}\u{1F1F8} USA', pnl:8.5,  wt:15.7},
+      {ticker:'BARC.L',name:'Barclays PLC',       shares:2000, cost:1.82,   price:2.14,   cur:'\u{00A3}', sector:'Finance', country:'\u{1F1EC}\u{1F1E7} UK', pnl:17.6, wt:4.7},
+      {ticker:'TSLA',  name:'Tesla Inc',          shares:25,   cost:248.00, price:198.74, cur:'$', sector:'Consumer',   country:'\u{1F1FA}\u{1F1F8} USA', pnl:-19.9,wt:4.2},
+      {ticker:'BRK.B', name:'Berkshire Hathaway', shares:25,   cost:348.20, price:401.10, cur:'$', sector:'Finance',    country:'\u{1F1FA}\u{1F1F8} USA', pnl:15.2, wt:8.5}
+    ],
+    sector: [
+      {name:'Technology', pct:55, color:'#4f46e5'},
+      {name:'Finance',    pct:13, color:'#7c3aed'},
+      {name:'Consumer',   pct:4,  color:'#f59e0b'},
+      {name:'Cash',       pct:28, color:'#e2e8f0'}
+    ],
+    country: [
+      {name:'USA',  pct:68, color:'#4f46e5'},
+      {name:'UK',   pct:5,  color:'#16a34a'},
+      {name:'Cash', pct:27, color:'#e2e8f0'}
+    ]
+  }
+];
+
+var currentSnapshot = SNAPSHOTS[SNAPSHOTS.length - 1];
+
+function findSnapshot(dateStr) {
+  var picked = new Date(dateStr);
+  var best = SNAPSHOTS[0];
+  for (var i = 0; i < SNAPSHOTS.length; i++) {
+    if (SNAPSHOTS[i].dateObj <= picked) best = SNAPSHOTS[i];
+  }
+  return best;
+}
+
+function applyTimeMachine() {
+  var inp = document.getElementById('tm-date'); if(!inp) return;
+  currentSnapshot = findSnapshot(inp.value);
+  renderSnapshot(currentSnapshot);
+  var badge=document.getElementById('tm-badge'), back=document.getElementById('tm-back');
+  if(badge) badge.textContent='Showing: '+currentSnapshot.dateLabel;
+  if(back)  back.classList.remove('hidden');
+}
+
+function resetTimeMachine() {
+  currentSnapshot = SNAPSHOTS[SNAPSHOTS.length-1];
+  renderSnapshot(currentSnapshot);
+  var inp=document.getElementById('tm-date'), badge=document.getElementById('tm-badge'), back=document.getElementById('tm-back');
+  if(inp)   inp.value='2025-08-14';
+  if(badge) badge.textContent='Showing: Current — 14 Aug 2025';
+  if(back)  back.classList.add('hidden');
+}
+
+function renderSnapshot(snap) {
+  // KPIs
+  document.getElementById('kpi-value').textContent     = '$' + snap.totalValue.toLocaleString();
+  var retEl = document.getElementById('kpi-return');
+  retEl.textContent = (snap.gainPct >= 0 ? '+' : '') + snap.gainPct.toFixed(1) + '%';
+  retEl.className   = 'kpi-value ' + (snap.gainPct >= 0 ? 'gain' : 'loss');
+  document.getElementById('kpi-cash').textContent      = '$' + snap.cash.toLocaleString();
+  document.getElementById('kpi-positions').textContent = snap.positions;
+  document.getElementById('kpi-sub-pos').textContent   = 'Across ' + snap.sectors + ' sectors';
+  document.getElementById('kpi-sub-cash').textContent  = ((snap.cash / snap.totalValue)*100).toFixed(1) + '% of portfolio';
+
+  // Holdings title
+  document.getElementById('holdings-title').textContent = 'Holdings — ' + snap.dateLabel;
+
+  // Holdings table
+  var tbody = document.getElementById('holdings-body');
+  if (snap.holdings.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px">No positions — starting cash only</td></tr>';
+  } else {
+    tbody.innerHTML = snap.holdings.map(function(h) {
+      var pnlClass = h.pnl >= 0 ? 'gain' : 'loss';
+      var pnlSign  = h.pnl >= 0 ? '+' : '';
+      var barW     = Math.round(h.wt);
+      return '<tr>' +
+        '<td><strong>' + h.ticker + '</strong></td>' +
+        '<td>' + h.name + '</td>' +
+        '<td><span class="tag">' + h.sector + '</span></td>' +
+        '<td>' + h.country + '</td>' +
+        '<td class="r">' + h.shares.toLocaleString() + '</td>' +
+        '<td class="r">' + h.cur + h.cost.toFixed(2) + '</td>' +
+        '<td class="r">' + h.cur + h.price.toFixed(2) + '</td>' +
+        '<td class="r">' + h.cur + (h.shares * h.price).toLocaleString(undefined,{maximumFractionDigits:0}) + '</td>' +
+        '<td class="r ' + pnlClass + '">' + pnlSign + h.pnl.toFixed(1) + '%</td>' +
+        '<td class="r">' + h.wt + '%<div class="holding-bar-bg"><div class="holding-bar-fill" style="width:' + barW + '%"></div></div></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  // Sector allocation
+  renderAlloc('sector-alloc-body', snap.sector);
+  // Country allocation
+  renderAlloc('country-alloc-body', snap.country);
+}
+
+function renderAlloc(containerId, data) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = data.map(function(item) {
+    return '<div class="alloc-row">' +
+      '<div class="alloc-label">' + item.name + '</div>' +
+      '<div class="alloc-track"><div class="alloc-fill" style="width:' + item.pct + '%;background:' + item.color + '"></div></div>' +
+      '<div class="alloc-pct">' + item.pct + '%</div>' +
+      '</div>';
+  }).join('');
+}
+
+// Init dashboard with current snapshot
+renderSnapshot(currentSnapshot);
+
+// ══════════════════════════════════════════════════════════
+// SHARED CHART HELPERS
+// ══════════════════════════════════════════════════════════
+var CHART = (function() {
+  var CX=54, CY=15, CW=556, CH=165;
+  function svgX(i,n){ return CX+(n<=1?0:i/(n-1))*CW; }
+  function svgY(v,mn,mx){ return CY+(mx===mn?CH/2:(1-(v-mn)/(mx-mn))*CH); }
+  function fmtShort(dt){ return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}); }
+  function fmtFull(dt) { return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+  function rollingSharpie(key,absIdx,win){
+    var data=window._chartData&&window._chartData[key]; if(!data) return null;
+    var start=Math.max(0,absIdx-win), slice=data.slice(start,absIdx+1);
+    if(slice.length<3) return null;
+    var rets=[]; for(var i=1;i<slice.length;i++) rets.push(slice[i]-slice[i-1]);
+    var mean=rets.reduce(function(a,b){return a+b;},0)/rets.length;
+    var variance=rets.reduce(function(a,b){return a+(b-mean)*(b-mean);},0)/rets.length;
+    var std=Math.sqrt(variance); if(std<1e-8) return null;
+    return ((mean/std)*Math.sqrt(252)).toFixed(2);
+  }
+  return { CX:CX, CY:CY, CW:CW, CH:CH, svgX:svgX, svgY:svgY, fmtShort:fmtShort, fmtFull:fmtFull, rollingSharpie:rollingSharpie };
+})();
+
+// ══════════════════════════════════════════════════════════
+// CHART ENGINE
+// ══════════════════════════════════════════════════════════
+(function () {
+  // Seeded PRNG (consistent data on every reload)
+  var seed = 20250814;
+  function rand() { seed = ((seed * 1664525) + 1013904223) & 0x7fffffff; return seed / 0x7fffffff; }
+  function randn() { var u = rand() + 1e-10, v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+
+  // Generate 5 years of trading days (Aug 2020 → Aug 2025)
+  var DAYS = 1260;
+  var dates = [];
+  var d = new Date(2020, 7, 14); // Aug 14 2020
+  while (dates.length < DAYS) {
+    if (d.getDay() !== 0 && d.getDay() !== 6) dates.push(new Date(d));
+    d.setDate(d.getDate() + 1);
+  }
+
+  // 5 series: portfolio, sp500, nasdaq, ftse, msci world
+  var SERIES_CFG = [
+    { key:'portfolio', annual:0.184, vol:0.22, color:'#4f46e5', label:'Portfolio',   dotId:'dot-portfolio', retId:'tt-r-portfolio', shrId:'tt-s-portfolio' },
+    { key:'sp500',     annual:0.112, vol:0.14, color:'#16a34a', label:'S&P 500',     dotId:'dot-sp500',     retId:'tt-r-sp500',     shrId:'tt-s-sp500'     },
+    { key:'nasdaq',    annual:0.098, vol:0.18, color:'#f59e0b', label:'NASDAQ',      dotId:'dot-nasdaq',    retId:'tt-r-nasdaq',    shrId:'tt-s-nasdaq'    },
+    { key:'ftse',      annual:0.041, vol:0.11, color:'#94a3b8', label:'FTSE 100',    dotId:'dot-ftse',      retId:'tt-r-ftse',      shrId:'tt-s-ftse'      },
+    { key:'msci',      annual:0.085, vol:0.13, color:'#ec4899', label:'MSCI World',  dotId:'dot-msci',      retId:'tt-r-msci',      shrId:'tt-s-msci'      }
+  ];
+
+  var allData = {};
+  SERIES_CFG.forEach(function(cfg) {
+    var drift = cfg.annual / DAYS, v = cfg.vol / Math.sqrt(DAYS), cum = 0, arr = [0];
+    for (var i = 1; i < DAYS; i++) { cum += drift + v * randn(); arr.push(cum * 100); }
+    allData[cfg.key] = arr;
+  });
+
+  // Nominal data: what $100k invested in each series would be worth
+  var STARTING_CASH = 100000;
+  var allDataNominal = {};
+  SERIES_CFG.forEach(function(cfg) {
+    allDataNominal[cfg.key] = allData[cfg.key].map(function(pct) {
+      return STARTING_CASH * (1 + pct / 100);
+    });
+  });
+
+  // SVG canvas
+  var VW = 620, VH = 210;
+
+  // State
+  var currentPeriod   = '1Y';
+  var sharpeWindow    = 90;
+  var customStart     = null, customEnd = null;
+  var seriesVisible   = { portfolio:true, sp500:true, nasdaq:true, ftse:true, msci:true };
+  var viewState       = {};
+  var chartMode = 'pct'; // 'pct' or 'nom'
+
+  function getRange() {
+    var n = dates.length;
+    if (currentPeriod==='1M')  return [Math.max(0,n-21),  n];
+    if (currentPeriod==='3M')  return [Math.max(0,n-63),  n];
+    if (currentPeriod==='6M')  return [Math.max(0,n-126), n];
+    if (currentPeriod==='1Y')  return [Math.max(0,n-252), n];
+    if (currentPeriod==='3Y')  return [Math.max(0,n-756), n];
+    if (currentPeriod==='5Y')  return [0, n];
+    if (currentPeriod==='All') return [0, n];
+    if (currentPeriod==='YTD') {
+      var yr = dates[n-1].getFullYear();
+      for (var i=0;i<n;i++) { if(dates[i].getFullYear()===yr) return [i,n]; }
+    }
+    if (currentPeriod==='Custom' && customStart && customEnd) {
+      var s=0,e=n-1;
+      for(var i=0;i<dates.length;i++){if(dates[i]>=customStart&&s===0)s=i;if(dates[i]<=customEnd)e=i;}
+      return [s,e+1];
+    }
+    return [0,n];
+  }
+
+  function renderChart() {
+    var rng = getRange(); var s=rng[0],e=rng[1];
+    var vDates = dates.slice(s,e);
+    var vIdx   = []; for(var i=s;i<e;i++) vIdx.push(i);
+    var n = vDates.length; if(n<2) return;
+
+    var vData = {};
+    if (chartMode === 'nom') {
+      SERIES_CFG.forEach(function(cfg){ vData[cfg.key]=allDataNominal[cfg.key].slice(s,e); });
+    } else {
+      SERIES_CFG.forEach(function(cfg){ var base=allData[cfg.key][s]; vData[cfg.key]=vIdx.map(function(i){return allData[cfg.key][i]-base;}); });
+    }
+
+    // Find min/max across visible series
+    var allVals=[];
+    SERIES_CFG.forEach(function(cfg){ if(seriesVisible[cfg.key]) allVals=allVals.concat(vData[cfg.key]); });
+    if(allVals.length===0) allVals=[0];
+    var minV=Math.min.apply(null,allVals), maxV=Math.max.apply(null,allVals);
+    var pad=(maxV-minV)*0.14; minV-=pad; maxV+=pad;
+
+    // Grid
+    var gEl=document.getElementById('chart-grid'), gh='';
+    for(var t=0;t<=5;t++){
+      var v=minV+(maxV-minV)*t/5, y=CHART.svgY(v,minV,maxV).toFixed(1);
+      var lbl = chartMode === 'nom' ? '$'+Math.round(v).toLocaleString() : (v>=0?'+':'')+v.toFixed(1)+'%';
+      gh+='<line x1="'+CHART.CX+'" y1="'+y+'" x2="'+(CHART.CX+CHART.CW)+'" y2="'+y+'" stroke="#f1f5f9" stroke-width="1"/>';
+      gh+='<text x="'+(CHART.CX-5)+'" y="'+(parseFloat(y)+3.5).toFixed(1)+'" font-size="9" fill="#94a3b8" text-anchor="end">'+lbl+'</text>';
+    }
+    var zy=CHART.svgY(0,minV,maxV).toFixed(1);
+    gh+='<line x1="'+CHART.CX+'" y1="'+zy+'" x2="'+(CHART.CX+CHART.CW)+'" y2="'+zy+'" stroke="#e2e8f0" stroke-width="1.5"/>';
+    for(var xt=0;xt<=5;xt++){
+      var xi=Math.round(xt*(n-1)/5), xv=CHART.svgX(xi,n).toFixed(1);
+      gh+='<text x="'+xv+'" y="'+(CHART.CY+CHART.CH+16)+'" font-size="9" fill="#94a3b8" text-anchor="middle">'+(vDates[xi]?CHART.fmtShort(vDates[xi]):'')+' </text>';
+    }
+    gEl.innerHTML=gh;
+
+    // Lines
+    var lEl=document.getElementById('chart-lines'), lh='';
+    SERIES_CFG.forEach(function(cfg,ci){
+      if(!seriesVisible[cfg.key]) return;
+      var pts=vData[cfg.key].map(function(v,i){ return CHART.svgX(i,n).toFixed(1)+','+CHART.svgY(v,minV,maxV).toFixed(1); }).join(' ');
+      var dash=ci===0?'':'stroke-dasharray="5,3"', width=ci===0?'2.5':'1.5';
+      lh+='<polyline points="'+pts+'" fill="none" stroke="'+cfg.color+'" stroke-width="'+width+'" '+dash+' stroke-linecap="round" stroke-linejoin="round"/>';
+    });
+    lEl.innerHTML=lh;
+
+    viewState={n:n,minV:minV,maxV:maxV,vData:vData,vDates:vDates,vIdx:vIdx};
+  }
+
+  // Crosshair
+  var overlay=document.getElementById('chart-overlay'), tooltip=document.getElementById('chart-tooltip'), crossV=document.getElementById('crosshair-v');
+  if(!overlay||!tooltip||!crossV) return;
+
+  overlay.addEventListener('mousemove',function(e){
+    var vs=viewState; if(!vs||vs.n<2) return;
+    var svg=document.getElementById('perf-chart'); if(!svg) return;
+    var rect=svg.getBoundingClientRect();
+    var scaleX=VW/rect.width, rawX=(e.clientX-rect.left)*scaleX;
+    var relX=Math.max(0,Math.min(1,(rawX-CHART.CX)/CHART.CW));
+    var idx=Math.min(vs.n-1,Math.round(relX*(vs.n-1)));
+    var xPos=CHART.svgX(idx,vs.n);
+
+    crossV.setAttribute('x1',xPos.toFixed(1)); crossV.setAttribute('x2',xPos.toFixed(1));
+    crossV.setAttribute('y1',CHART.CY); crossV.setAttribute('y2',CHART.CY+CHART.CH);
+    crossV.removeAttribute('display');
+
+    SERIES_CFG.forEach(function(cfg){
+      var dot=document.getElementById(cfg.dotId); if(!dot) return;
+      if(!seriesVisible[cfg.key]){ dot.setAttribute('display','none'); return; }
+      var v=vs.vData[cfg.key][idx];
+      dot.setAttribute('cx',xPos.toFixed(1)); dot.setAttribute('cy',CHART.svgY(v,vs.minV,vs.maxV).toFixed(1));
+      dot.removeAttribute('display');
+    });
+
+    var absIdx=vs.vIdx[idx];
+    document.getElementById('tt-date').textContent=CHART.fmtFull(vs.vDates[idx]);
+    document.getElementById('tt-window').textContent='Rolling Sharpe window: '+sharpeWindow+'d';
+
+    SERIES_CFG.forEach(function(cfg){
+      var v=vs.vData[cfg.key][idx];
+      var retEl=document.getElementById(cfg.retId); if(!retEl) return;
+      if(chartMode==='nom'){ retEl.textContent='$'+Math.round(v).toLocaleString(); retEl.style.color=v>=STARTING_CASH?'#4ade80':'#f87171'; }
+      else { retEl.textContent=(v>=0?'+':'')+v.toFixed(2)+'%'; retEl.style.color=v>=0?'#4ade80':'#f87171'; }
+
+      var shr=CHART.rollingSharpie(cfg.key,absIdx,sharpeWindow);
+      var shrEl=document.getElementById(cfg.shrId); if(!shrEl) return;
+      if(shr===null){ shrEl.textContent='—'; shrEl.style.color='#475569'; }
+      else {
+        var sv=parseFloat(shr);
+        shrEl.textContent=shr;
+        shrEl.style.color=sv>=1.5?'#4ade80':sv>=0.5?'#fcd34d':sv>=0?'#fb923c':'#f87171';
+      }
+    });
+
+    // Tooltip position
+    var TIP_W=245, outer=document.getElementById('chart-outer'); if(!outer) return;
+    var oRect=outer.getBoundingClientRect();
+    var lx=e.clientX-oRect.left+14; if(lx+TIP_W>oRect.width-8) lx=e.clientX-oRect.left-TIP_W-14;
+    var ty=e.clientY-oRect.top-70; if(ty<4) ty=4;
+    tooltip.style.left=lx+'px'; tooltip.style.top=ty+'px'; tooltip.style.display='block';
+  });
+
+  overlay.addEventListener('mouseleave',function(){
+    tooltip.style.display='none'; crossV.setAttribute('display','none');
+    SERIES_CFG.forEach(function(cfg){ var d=document.getElementById(cfg.dotId); if(d) d.setAttribute('display','none'); });
+  });
+
+  // Period selector
+  window.setPeriod=function(p){
+    currentPeriod=p;
+    document.querySelectorAll('.period-btn').forEach(function(b){b.classList.remove('active');});
+    var btn=document.querySelector('.period-btn[data-p="'+p+'"]'); if(btn) btn.classList.add('active');
+    document.getElementById('custom-range').style.display=p==='Custom'?'flex':'none';
+    if(p!=='Custom') renderChart();
+  };
+  window.applyCustomRange=function(){
+    var s=document.getElementById('custom-start').value, e=document.getElementById('custom-end').value;
+    if(s&&e){customStart=new Date(s); customEnd=new Date(e); renderChart();}
+  };
+
+  // Sharpe window selector
+  window.setWindow=function(w){
+    sharpeWindow=w;
+    document.querySelectorAll('.sharpe-btn').forEach(function(b){b.classList.remove('active');});
+    var btn=document.querySelector('.sharpe-btn[data-w="'+w+'"]'); if(btn) btn.classList.add('active');
+  };
+
+  window.setChartMode=function(m){
+    chartMode=m;
+    document.getElementById('tog-mode-pct').classList.toggle('active',m==='pct');
+    document.getElementById('tog-mode-nom').classList.toggle('active',m==='nom');
+    renderChart();
+  };
+
+  // Series toggle
+  window.toggleSeries=function(key){
+    seriesVisible[key]=!seriesVisible[key];
+    var tog=document.getElementById('tog-'+key);
+    tog.classList.toggle('active', seriesVisible[key]);
+    SERIES_CFG.forEach(function(cfg){
+      if(cfg.key===key){
+        var dot=document.getElementById(cfg.dotId);
+        if(!seriesVisible[key]) dot.setAttribute('display','none');
+      }
+    });
+    renderChart();
+  };
+
+  window._chartDates = dates;
+  window._chartData  = allData;
+  window._seriesCfg  = SERIES_CFG;
+  window._chartDataNominal = allDataNominal;
+  window._startingCash = STARTING_CASH;
+  renderChart();
+})();
+
+// ── Sharpe Calculator (outside IIFE, reads window._chartDates etc.) ───────────
+window.computePeriodSharpe = function(key, startIdx, endIdx, rfRateDecimal) {
+  var data = window._chartData[key];
+  if (!data || endIdx <= startIdx || (endIdx - startIdx) < 2) return null;
+  var slice = data.slice(startIdx, endIdx + 1);
+  var rets = [];
+  for (var i = 1; i < slice.length; i++) rets.push(slice[i] - slice[i-1]);
+  var n    = rets.length;
+  var mean = rets.reduce(function(a,b){return a+b;},0) / n;
+  var variance = rets.reduce(function(a,b){return a+(b-mean)*(b-mean);},0) / n;
+  var std  = Math.sqrt(variance);
+  var annVol = std * Math.sqrt(252);
+  var annRet = mean * 252;
+  var periodReturn = slice[slice.length-1] - slice[0];
+  var sharpe = annVol < 1e-8 ? null : (annRet - rfRateDecimal * 100) / annVol;
+  return { periodReturn: periodReturn, annReturn: annRet, annVol: annVol, sharpe: sharpe, tradingDays: n };
+};
+
+window.setCalcPreset = function(p) {
+  var dates = window._chartDates;
+  var last  = dates[dates.length - 1];
+  var start;
+  if      (p === '1M')  { start = new Date(last); start.setMonth(start.getMonth() - 1); }
+  else if (p === '3M')  { start = new Date(last); start.setMonth(start.getMonth() - 3); }
+  else if (p === '6M')  { start = new Date(last); start.setMonth(start.getMonth() - 6); }
+  else if (p === 'YTD') { start = new Date(last.getFullYear(), 0, 1); }
+  else if (p === '1Y')  { start = new Date(last); start.setFullYear(start.getFullYear() - 1); }
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function fmtDate(dt){ return dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate()); }
+  document.getElementById('calc-start').value = fmtDate(start);
+  document.getElementById('calc-end').value   = fmtDate(last);
+  document.querySelectorAll('.calc-preset-btn').forEach(function(b){
+    b.style.background = b.dataset.p === p ? '#4f46e5' : '';
+    b.style.color      = b.dataset.p === p ? '#fff'    : '';
+  });
+};
+
+window.calcSharpe = function() {
+  var sVal  = document.getElementById('calc-start').value;
+  var eVal  = document.getElementById('calc-end').value;
+  var rfPct = parseFloat(document.getElementById('calc-rf').value) || 0;
+  var wrap  = document.getElementById('calc-results-wrap');
+  if (!sVal || !eVal) {
+    wrap.innerHTML = '<div class="result-empty">Please select a start and end date.</div>';
+    return;
+  }
+  var sDate = new Date(sVal), eDate = new Date(eVal);
+  if (sDate >= eDate) {
+    wrap.innerHTML = '<div class="result-empty">Start date must be before end date.</div>';
+    return;
+  }
+  var dates = window._chartDates;
+  var cfg   = window._seriesCfg;
+  var sIdx  = -1, eIdx = -1;
+  for (var i = 0; i < dates.length; i++) {
+    if (sIdx === -1 && dates[i] >= sDate) sIdx = i;
+    if (dates[i] <= eDate) eIdx = i;
+  }
+  if (sIdx === -1 || eIdx === -1 || eIdx <= sIdx) {
+    wrap.innerHTML = '<div class="result-empty">No data in the selected range. Try adjusting dates.</div>';
+    return;
+  }
+  var results = cfg.map(function(s) {
+    var r = window.computePeriodSharpe(s.key, sIdx, eIdx, rfPct / 100);
+    return { label: s.label, color: s.color, r: r };
+  });
+  var portSharpe = results[0].r ? results[0].r.sharpe : null;
+  function pillCls(v){ return v == null ? 'poor' : v >= 1.5 ? 'excellent' : v >= 1 ? 'good' : v >= 0.5 ? 'fair' : 'poor'; }
+  function fmtSharpe(v){ return v == null ? 'N/A' : v.toFixed(2); }
+  function fmtPct(v,dec){ return v == null ? 'N/A' : (v >= 0 ? '+' : '') + v.toFixed(dec == null ? 2 : dec) + '%'; }
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+  html += '<thead><tr style="border-bottom:2px solid #e2e8f0;">';
+  html += '<th style="text-align:left;padding:8px 6px;color:#64748b;font-weight:600;">Series</th>';
+  html += '<th style="text-align:right;padding:8px 6px;color:#64748b;font-weight:600;">Period Return</th>';
+  html += '<th style="text-align:right;padding:8px 6px;color:#64748b;font-weight:600;">Ann. Return</th>';
+  html += '<th style="text-align:right;padding:8px 6px;color:#64748b;font-weight:600;">Ann. Vol</th>';
+  html += '<th style="text-align:right;padding:8px 6px;color:#64748b;font-weight:600;">Sharpe</th>';
+  html += '<th style="text-align:right;padding:8px 6px;color:#64748b;font-weight:600;">vs Portfolio</th>';
+  html += '</tr></thead><tbody>';
+  results.forEach(function(item, i) {
+    var r = item.r;
+    var sv = r ? r.sharpe : null;
+    var diff = (i === 0 || portSharpe == null || sv == null) ? null : sv - portSharpe;
+    var vsStr   = diff == null ? '—' : (diff >= 0 ? '+' : '') + diff.toFixed(2);
+    var vsColor = i === 0 ? '#94a3b8' : diff == null ? '#94a3b8' : diff >= 0 ? '#16a34a' : '#dc2626';
+    var bg = i % 2 === 0 ? '#f8fafc' : '#fff';
+    html += '<tr style="background:'+bg+';border-bottom:1px solid #f1f5f9;">';
+    html += '<td style="padding:8px 6px;"><span style="display:inline-flex;align-items:center;gap:6px;">'
+           +'<span style="width:10px;height:10px;border-radius:50%;background:'+item.color+';display:inline-block;"></span>'
+           +'<strong>'+item.label+'</strong></span></td>';
+    html += '<td style="text-align:right;padding:8px 6px;color:'+(r&&r.periodReturn>=0?'#16a34a':'#dc2626')+';font-weight:600;">'+(r?fmtPct(r.periodReturn):'N/A')+'</td>';
+    html += '<td style="text-align:right;padding:8px 6px;color:'+(r&&r.annReturn>=0?'#16a34a':'#dc2626')+';font-weight:600;">'+(r?fmtPct(r.annReturn):'N/A')+'</td>';
+    html += '<td style="text-align:right;padding:8px 6px;color:#475569;">'+(r?r.annVol.toFixed(2)+'%':'N/A')+'</td>';
+    html += '<td style="text-align:right;padding:8px 6px;"><span class="sharpe-pill '+pillCls(sv)+'">'+fmtSharpe(sv)+'</span></td>';
+    html += '<td style="text-align:right;padding:8px 6px;color:'+vsColor+';font-weight:600;">'+vsStr+'</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  html += '<p style="margin-top:10px;font-size:11px;color:#94a3b8;">Risk-free rate: '+rfPct.toFixed(2)+'% &nbsp;·&nbsp; '+(eIdx-sIdx)+' trading days &nbsp;·&nbsp; '+sVal+' → '+eVal+'</p>';
+  wrap.innerHTML = html;
+};
+
+// ── Public View: Interactive chart + period/window controls ───────────────────
+var pubChartState = { period:'1Y', sharpeWindow:90, customStart:null, customEnd:null, viewData:{} };
+var pubChartMode = 'pct';
+
+window.setPubPeriod = function(p) {
+  pubChartState.period = p;
+  document.querySelectorAll('.pub-period-btn').forEach(function(b){ b.classList.remove('active'); });
+  var btn = document.querySelector('.pub-period-btn[data-pp="'+p+'"]'); if (btn) btn.classList.add('active');
+  var cr = document.getElementById('pub-custom-range');
+  if (cr) cr.style.display = p==='Custom' ? 'flex' : 'none';
+  if (p !== 'Custom') renderPubChart();
+};
+
+window.setPubWindow = function(w) {
+  pubChartState.sharpeWindow = w;
+  document.querySelectorAll('.pub-sharpe-btn').forEach(function(b){ b.classList.remove('active'); });
+  var btn = document.querySelector('.pub-sharpe-btn[data-pw="'+w+'"]'); if (btn) btn.classList.add('active');
+};
+
+window.applyPubCustomRange = function() {
+  var s = document.getElementById('pub-custom-start').value;
+  var e = document.getElementById('pub-custom-end').value;
+  if (s && e) { pubChartState.customStart = new Date(s); pubChartState.customEnd = new Date(e); renderPubChart(); }
+};
+
+window.setPubChartMode = function(m) {
+  pubChartMode = m;
+  var p = document.getElementById('pub-tog-mode-pct');
+  var n = document.getElementById('pub-tog-mode-nom');
+  if(p) p.classList.toggle('active', m === 'pct');
+  if(n) n.classList.toggle('active', m === 'nom');
+  renderPubChart();
+};
+
+function getPubRange() {
+  var dates = window._chartDates, n = dates.length;
+  var p = pubChartState.period;
+  if (p==='1M')  return [Math.max(0,n-21),  n];
+  if (p==='3M')  return [Math.max(0,n-63),  n];
+  if (p==='6M')  return [Math.max(0,n-126), n];
+  if (p==='1Y')  return [Math.max(0,n-252), n];
+  if (p==='3Y')  return [Math.max(0,n-756), n];
+  if (p==='5Y')  return [0, n];
+  if (p==='All') return [0, n];
+  if (p==='YTD') {
+    var yr = dates[n-1].getFullYear();
+    for (var i=0;i<n;i++) if (dates[i].getFullYear()===yr) return [i,n];
+  }
+  if (p==='Custom' && pubChartState.customStart && pubChartState.customEnd) {
+    var si=-1, ei=-1;
+    for (var j=0;j<n;j++){
+      if (si===-1 && dates[j]>=pubChartState.customStart) si=j;
+      if (dates[j]<=pubChartState.customEnd) ei=j;
+    }
+    if (si!==-1&&ei>si) return [si,ei+1];
+  }
+  return [Math.max(0,n-252),n]; // 1Y default
+}
+
+function renderPubChart() {
+  if (!window._chartData || !window._chartDates || !window._seriesCfg) return;
+  var pubChart = document.getElementById('pub-perf-chart');
+  if (!pubChart) return;
+
+  var dates   = window._chartDates;
+  var allData = window._chartData;
+  var cfg     = window._seriesCfg;
+  var range   = getPubRange();
+  var s0=range[0], s1=range[1];
+  var vDates  = dates.slice(s0,s1);
+  var vIdx    = [];
+  for (var k=s0;k<s1;k++) vIdx.push(k);
+  var vData   = {};
+  if (pubChartMode === 'nom') {
+    var nomData = window._chartDataNominal;
+    cfg.forEach(function(s){ vData[s.key] = nomData[s.key].slice(s0,s1); });
+  } else {
+    cfg.forEach(function(s){
+      var base = allData[s.key][s0];
+      vData[s.key] = allData[s.key].slice(s0,s1).map(function(v){ return v-base; });
+    });
+  }
+  var n = vDates.length;
+  var allVals = [];
+  cfg.forEach(function(s){ vData[s.key].forEach(function(v){ allVals.push(v); }); });
+  var minV=Math.min.apply(null,allVals), maxV=Math.max.apply(null,allVals);
+  var pad=(maxV-minV)*0.1; minV-=pad; maxV+=pad;
+
+  // Store view state for crosshair
+  pubChartState.viewData = { n:n, minV:minV, maxV:maxV, vData:vData, vDates:vDates, vIdx:vIdx, s0:s0 };
+
+  var h='';
+  h+='<rect x="'+CHART.CX+'" y="'+CHART.CY+'" width="'+CHART.CW+'" height="'+CHART.CH+'" fill="#f8fafc" rx="4"/>';
+  for (var yi=0;yi<=4;yi++){
+    var yv=minV+yi*(maxV-minV)/4, yp=CHART.svgY(yv,minV,maxV).toFixed(1);
+    h+='<line x1="'+CHART.CX+'" y1="'+yp+'" x2="'+(CHART.CX+CHART.CW)+'" y2="'+yp+'" stroke="#e2e8f0" stroke-width="0.8"/>';
+    var ylbl = pubChartMode === 'nom' ? '$'+Math.round(yv).toLocaleString() : (yv>=0?'+':'')+yv.toFixed(1)+'%';
+    h+='<text x="'+(CHART.CX-4)+'" y="'+(parseFloat(yp)+3)+'" font-size="8" fill="#94a3b8" text-anchor="end">'+ylbl+'</text>';
+  }
+  h+='<line x1="'+CHART.CX+'" y1="'+CHART.svgY(0,minV,maxV).toFixed(1)+'" x2="'+(CHART.CX+CHART.CW)+'" y2="'+CHART.svgY(0,minV,maxV).toFixed(1)+'" stroke="#cbd5e1" stroke-width="1.5"/>';
+  for (var xt=0;xt<=5;xt++){
+    var xi=Math.round(xt*(n-1)/5), xv=CHART.svgX(xi,n).toFixed(1);
+    h+='<text x="'+xv+'" y="'+(CHART.CY+CHART.CH+16)+'" font-size="9" fill="#94a3b8" text-anchor="middle">'+CHART.fmtShort(vDates[xi])+'</text>';
+  }
+  cfg.forEach(function(s,ci){
+    var pts=vData[s.key].map(function(v,i){ return CHART.svgX(i,n).toFixed(1)+','+CHART.svgY(v,minV,maxV).toFixed(1); }).join(' ');
+    var dash=ci===0?'':' stroke-dasharray="5,3"', w=ci===0?'2.5':'1.5';
+    h+='<polyline points="'+pts+'" fill="none" stroke="'+s.color+'" stroke-width="'+w+'"'+dash+' stroke-linecap="round" stroke-linejoin="round"/>';
+  });
+  pubChart.innerHTML = h;
+}
+
+// ── Public chart crosshair ─────────────────────────────────────────────────────
+(function() {
+  function trySetupPubCrosshair() {
+    var hitEl = document.getElementById('pub-chart-hit');
+    var pubSvg = document.getElementById('pub-perf-chart');
+    if (!hitEl || !pubSvg || !window._chartData) { setTimeout(trySetupPubCrosshair, 100); return; }
+
+    hitEl.addEventListener('mousemove', function(e) {
+      var vd = pubChartState.viewData;
+      if (!vd || !vd.n || vd.n < 2) return;
+      var rect = pubSvg.getBoundingClientRect();
+      var scaleX = 620 / rect.width;
+      var rawX = (e.clientX - rect.left) * scaleX;
+      var relX = Math.max(0, Math.min(1, (rawX - CHART.CX) / CHART.CW));
+      var idx  = Math.min(vd.n - 1, Math.round(relX * (vd.n - 1)));
+      var xPos = CHART.svgX(idx, vd.n);
+
+      var crossV = document.getElementById('pub-crosshair-v'); if(!crossV) return;
+      crossV.setAttribute('x1', xPos.toFixed(1)); crossV.setAttribute('x2', xPos.toFixed(1));
+      crossV.setAttribute('y1', CHART.CY); crossV.setAttribute('y2', CHART.CY+CHART.CH);
+      crossV.removeAttribute('display');
+
+      var cfg = window._seriesCfg; if(!cfg) return;
+      cfg.forEach(function(s){
+        var dot = document.getElementById('pub-dot-'+s.key); if(!dot) return;
+        var v = vd.vData[s.key][idx];
+        dot.setAttribute('cx', xPos.toFixed(1));
+        dot.setAttribute('cy', CHART.svgY(v, vd.minV, vd.maxV).toFixed(1));
+        dot.removeAttribute('display');
+      });
+
+      var absIdx = vd.vIdx[idx];
+      document.getElementById('pub-tt-date').textContent = CHART.fmtFull(vd.vDates[idx]);
+      document.getElementById('pub-tt-window').textContent = 'Rolling Sharpe window: '+pubChartState.sharpeWindow+'d';
+
+      cfg.forEach(function(s){
+        var v = vd.vData[s.key][idx];
+        var retEl = document.getElementById('pub-tt-r-'+s.key); if(!retEl) return;
+        if(pubChartMode==='nom'){ retEl.textContent='$'+Math.round(v).toLocaleString(); retEl.style.color=v>=(window._startingCash||100000)?'#4ade80':'#f87171'; }
+        else { retEl.textContent=(v>=0?'+':'')+v.toFixed(2)+'%'; retEl.style.color=v>=0?'#4ade80':'#f87171'; }
+        var shr = CHART.rollingSharpie(s.key, absIdx, pubChartState.sharpeWindow);
+        var shrEl = document.getElementById('pub-tt-s-'+s.key); if(!shrEl) return;
+        if (shr===null){ shrEl.textContent='—'; shrEl.style.color='#475569'; }
+        else {
+          var sv=parseFloat(shr);
+          shrEl.textContent=shr;
+          shrEl.style.color=sv>=1.5?'#4ade80':sv>=0.5?'#fcd34d':sv>=0?'#fb923c':'#f87171';
+        }
+      });
+
+      var tip=document.getElementById('pub-chart-tooltip'); if(!tip) return;
+      var outer=document.getElementById('pub-chart-outer'); if(!outer) return;
+      var oRect=outer.getBoundingClientRect();
+      var lx=e.clientX-oRect.left+14; if(lx+245>oRect.width-8) lx=e.clientX-oRect.left-245-14;
+      var ty=e.clientY-oRect.top-70; if(ty<4) ty=4;
+      tip.style.left=lx+'px'; tip.style.top=ty+'px'; tip.style.display='block';
+    });
+
+    hitEl.addEventListener('mouseleave', function(){
+      var t=document.getElementById('pub-chart-tooltip'); if(t) t.style.display='none';
+      var c=document.getElementById('pub-crosshair-v'); if(c) c.setAttribute('display','none');
+      if(window._seriesCfg) window._seriesCfg.forEach(function(s){
+        var d=document.getElementById('pub-dot-'+s.key); if(d) d.setAttribute('display','none');
+      });
+    });
+
+    // Initial render
+    renderPubChart();
+  }
+  trySetupPubCrosshair();
+})();
+
+// ── Public View: Time Machine ─────────────────────────────────────────────────
+window.applyPubTimeMachine = function() {
+  var inp = document.getElementById('pub-tm-date'); if(!inp) return;
+  var snap = findSnapshot(inp.value);
+  renderPubSnapshot(snap);
+  var badge=document.getElementById('pub-tm-badge'), back=document.getElementById('pub-tm-back');
+  if(badge) badge.textContent='Showing: '+snap.dateLabel;
+  if(back)  back.classList.remove('hidden');
+};
+
+window.resetPubTimeMachine = function() {
+  var snap = SNAPSHOTS[SNAPSHOTS.length-1];
+  renderPubSnapshot(snap);
+  var inp=document.getElementById('pub-tm-date'), badge=document.getElementById('pub-tm-badge'), back=document.getElementById('pub-tm-back');
+  if(inp)   inp.value='2025-08-14';
+  if(badge) badge.textContent='Showing: Current — 14 Aug 2025';
+  if(back)  back.classList.add('hidden');
+};
+
+function renderPubSnapshot(snap) {
+  // Update holdings title
+  var titleEl = document.getElementById('pub-holdings-title');
+  if (titleEl) titleEl.textContent = '📋 Holdings — ' + snap.dateLabel;
+
+  // Holdings table
+  var tbody = document.getElementById('pub-holdings-body');
+  if (tbody) {
+    if (snap.holdings.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px">No positions — starting cash only</td></tr>';
+    } else {
+      tbody.innerHTML = snap.holdings.map(function(h) {
+        var pnlClass = h.pnl >= 0 ? 'gain' : 'loss';
+        var pnlSign  = h.pnl >= 0 ? '+' : '';
+        var barW     = Math.round(h.wt);
+        return '<tr>' +
+          '<td><strong>' + h.ticker + '</strong></td>' +
+          '<td>' + h.name + '</td>' +
+          '<td><span class="tag">' + h.sector + '</span></td>' +
+          '<td>' + h.country + '</td>' +
+          '<td class="r">' + h.shares.toLocaleString() + '</td>' +
+          '<td class="r">' + h.cur + h.cost.toFixed(2) + '</td>' +
+          '<td class="r">' + h.cur + h.price.toFixed(2) + '</td>' +
+          '<td class="r">' + h.cur + (h.shares * h.price).toLocaleString(undefined,{maximumFractionDigits:0}) + '</td>' +
+          '<td class="r ' + pnlClass + '">' + pnlSign + h.pnl.toFixed(1) + '%</td>' +
+          '<td class="r">' + h.wt + '%<div class="holding-bar-bg"><div class="holding-bar-fill" style="width:' + barW + '%"></div></div></td>' +
+          '</tr>';
+      }).join('') +
+      '<tr style="background:#f8fafc;font-weight:600"><td colspan="7" style="color:var(--muted)">Cash</td>' +
+        '<td class="r">$' + snap.cash.toLocaleString() + '</td>' +
+        '<td class="r" style="color:#94a3b8">—</td>' +
+        '<td class="r">' + ((snap.cash/snap.totalValue)*100).toFixed(1) + '%</td>' +
+      '</tr>';
+    }
+  }
+
+  // Allocations — reuse renderAlloc() but target pub- IDs
+  var sa = document.getElementById('pub-sector-alloc');
+  if (sa) sa.innerHTML = snap.sector.map(function(item) {
+    return '<div class="alloc-row">' +
+      '<div class="alloc-label">' + item.name + '</div>' +
+      '<div class="alloc-track"><div class="alloc-fill" style="width:' + item.pct + '%;background:' + item.color + '"></div></div>' +
+      '<div class="alloc-pct">' + item.pct + '%</div></div>';
+  }).join('');
+
+  var ca = document.getElementById('pub-country-alloc');
+  if (ca) ca.innerHTML = snap.country.map(function(item) {
+    return '<div class="alloc-row">' +
+      '<div class="alloc-label">' + item.name + '</div>' +
+      '<div class="alloc-track"><div class="alloc-fill" style="width:' + item.pct + '%;background:' + item.color + '"></div></div>' +
+      '<div class="alloc-pct">' + item.pct + '%</div></div>';
+  }).join('');
+}
+
+// Init public view with current snapshot
+(function() {
+  function tryInitPubView() {
+    if (typeof SNAPSHOTS === 'undefined') { setTimeout(tryInitPubView, 80); return; }
+    renderPubSnapshot(SNAPSHOTS[SNAPSHOTS.length - 1]);
+  }
+  tryInitPubView();
+})();
+
+// ── Populate Sharpe at-a-Glance tables (dashboard + analytics) ────────────────
+(function() {
+  function tryPopulate() {
+    if (!window._chartDates || !window._chartData || !window._seriesCfg || !window.computePeriodSharpe) {
+      setTimeout(tryPopulate, 80);
+      return;
+    }
+    var dates = window._chartDates;
+    var cfg   = window._seriesCfg;
+    var n     = dates.length;
+    var RF    = 0.05; // 5% annualised risk-free rate
+    var last  = dates[n - 1];
+    var d6m   = new Date(last); d6m.setMonth(d6m.getMonth() - 6);
+    var d1y   = new Date(last); d1y.setFullYear(d1y.getFullYear() - 1);
+    var idx6m = 0, idx1y = 0;
+    for (var i = 0; i < n; i++) {
+      if (dates[i] >= d6m && idx6m === 0) idx6m = i;
+      if (dates[i] >= d1y && idx1y === 0) idx1y = i;
+    }
+    function pillCls(v){ return v == null ? 'poor' : v >= 1.5 ? 'excellent' : v >= 1 ? 'good' : v >= 0.5 ? 'fair' : 'poor'; }
+    function fmtV(v)   { return v == null ? '—' : v.toFixed(2); }
+    function fmtPct(v) { return v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
+    function retColor(v){ return v == null ? '#475569' : v >= 0 ? '#16a34a' : '#dc2626'; }
+
+    // Portfolio Sharpe for 1Y (to compute alpha vs others)
+    var portR1 = window.computePeriodSharpe(cfg[0].key, idx1y, n - 1, RF);
+    var portSh1 = portR1 ? portR1.sharpe : null;
+
+    /* ── Dashboard glance table (8 cols: Series | 6M Return | 6M Vol | 6M Sharpe | 1Y Return | 1Y Vol | 1Y Sharpe | Rating 1Y) ── */
+    var rows1 = '';
+    cfg.forEach(function(s) {
+      var r6 = window.computePeriodSharpe(s.key, idx6m, n - 1, RF);
+      var r1 = window.computePeriodSharpe(s.key, idx1y, n - 1, RF);
+      var sh6 = r6 ? r6.sharpe : null;
+      var sh1 = r1 ? r1.sharpe : null;
+      var label6 = sh6 == null ? '—' : sh6 >= 1.5 ? 'Excellent' : sh6 >= 1 ? 'Good' : sh6 >= 0.5 ? 'Fair' : 'Poor';
+      var label1 = sh1 == null ? '—' : sh1 >= 1.5 ? 'Excellent' : sh1 >= 1 ? 'Good' : sh1 >= 0.5 ? 'Fair' : 'Poor';
+      rows1 += '<tr>';
+      rows1 += '<td><span style="display:inline-flex;align-items:center;gap:6px;">'
+              +'<span style="width:8px;height:8px;border-radius:50%;background:'+s.color+';display:inline-block;"></span>'
+              +'<strong>'+s.label+'</strong></span></td>';
+      rows1 += '<td class="r" style="color:'+retColor(r6?r6.annReturn:null)+';">'+(r6?fmtPct(r6.annReturn):'—')+'</td>';
+      rows1 += '<td class="r" style="color:#475569;">'+(r6?r6.annVol.toFixed(2)+'%':'—')+'</td>';
+      rows1 += '<td class="r"><span class="sharpe-pill '+pillCls(sh6)+'">'+fmtV(sh6)+'</span></td>';
+      rows1 += '<td class="r" style="color:'+retColor(r1?r1.annReturn:null)+';">'+(r1?fmtPct(r1.annReturn):'—')+'</td>';
+      rows1 += '<td class="r" style="color:#475569;">'+(r1?r1.annVol.toFixed(2)+'%':'—')+'</td>';
+      rows1 += '<td class="r"><span class="sharpe-pill '+pillCls(sh1)+'">'+fmtV(sh1)+'</span></td>';
+      rows1 += '<td class="r"><span class="sharpe-pill '+pillCls(sh1)+'">'+label1+'</span></td>';
+      rows1 += '</tr>';
+    });
+
+    /* ── Analytics table (8 cols: Series | 6M Return | 6M Vol | 6M Sharpe | 1Y Return | 1Y Vol | 1Y Sharpe | Sharpe Alpha 1Y) ── */
+    var rows2 = '';
+    cfg.forEach(function(s) {
+      var r6 = window.computePeriodSharpe(s.key, idx6m, n - 1, RF);
+      var r1 = window.computePeriodSharpe(s.key, idx1y, n - 1, RF);
+      var sh6 = r6 ? r6.sharpe : null;
+      var sh1 = r1 ? r1.sharpe : null;
+      var alpha = (portSh1 == null || sh1 == null) ? null : sh1 - portSh1;
+      var alphaStr  = alpha == null ? '—' : (alpha >= 0 ? '+' : '') + alpha.toFixed(2);
+      var alphaColor = alpha == null ? '#475569' : alpha >= 0 ? '#16a34a' : '#dc2626';
+      rows2 += '<tr>';
+      rows2 += '<td><span style="display:inline-flex;align-items:center;gap:6px;">'
+              +'<span style="width:8px;height:8px;border-radius:50%;background:'+s.color+';display:inline-block;"></span>'
+              +'<strong>'+s.label+'</strong></span></td>';
+      rows2 += '<td class="r" style="color:'+retColor(r6?r6.annReturn:null)+';">'+(r6?fmtPct(r6.annReturn):'—')+'</td>';
+      rows2 += '<td class="r" style="color:#475569;">'+(r6?r6.annVol.toFixed(2)+'%':'—')+'</td>';
+      rows2 += '<td class="r"><span class="sharpe-pill '+pillCls(sh6)+'">'+fmtV(sh6)+'</span></td>';
+      rows2 += '<td class="r" style="color:'+retColor(r1?r1.annReturn:null)+';">'+(r1?fmtPct(r1.annReturn):'—')+'</td>';
+      rows2 += '<td class="r" style="color:#475569;">'+(r1?r1.annVol.toFixed(2)+'%':'—')+'</td>';
+      rows2 += '<td class="r"><span class="sharpe-pill '+pillCls(sh1)+'">'+fmtV(sh1)+'</span></td>';
+      rows2 += '<td class="r" style="color:'+alphaColor+';font-weight:600;">'+alphaStr+'</td>';
+      rows2 += '</tr>';
+    });
+
+    var g1 = document.getElementById('sharpe-glance-body');
+    if (g1) g1.innerHTML = rows1;
+    var g2 = document.getElementById('analytics-sharpe-body');
+    if (g2) g2.innerHTML = rows2;
+    var g3 = document.getElementById('pub-sharpe-body');
+    if (g3) g3.innerHTML = rows2; // public view uses same data as analytics
+  }
+  tryPopulate();
+})();
+</script>
+</body>
+</html>
