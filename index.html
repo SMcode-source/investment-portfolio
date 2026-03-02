@@ -1064,125 +1064,223 @@ function filterIndexes(q) {
 }
 
 // ══════════════════════════════════════════════════════════
-// IBKR WEB API MODULE (via Netlify Functions proxy)
+// IBKR CLIENT PORTAL GATEWAY MODULE
+// Connects directly to IB Gateway running on localhost:5000
+// No OAuth needed — gateway manages the brokerage session.
 // ══════════════════════════════════════════════════════════
 var IBKRAPI = {
+  // IB Client Portal Gateway base URL (runs locally)
+  GW: 'https://localhost:5000/v1/api',
   _cache: {},
-  _cacheTTL: 60000,
-  _conidMap: {}, // ticker→conid mapping cache
-  _initialized: false,
-  _status: 'disconnected', // disconnected, connecting, connected, error
+  _cacheTTL: 60000,      // 60s for live quotes
+  _histCacheTTL: 3600000, // 1h for historical data
+  _conidMap: {},
+  _status: 'disconnected', // disconnected | connecting | connected | error | cert-needed
+  _keepaliveTimer: null,
 
-  _getCached: function(key) {
+  // ── Cache helpers ──────────────────────────────────────────
+  _getCached: function(key, ttl) {
     var c = this._cache[key];
-    if (c && (Date.now() - c.ts) < this._cacheTTL) return c.data;
-    // Also check localStorage for persistent cache
+    if (c && (Date.now() - c.ts) < (ttl || this._cacheTTL)) return c.data;
     try {
-      var stored = JSON.parse(localStorage.getItem('ibkr_cache_' + key));
-      if (stored && (Date.now() - stored.ts) < this._cacheTTL * 10) { // localStorage cache: 10x longer TTL
-        this._cache[key] = stored;
-        return stored.data;
-      }
+      var s = JSON.parse(localStorage.getItem('ibkr_c_' + key));
+      if (s && (Date.now() - s.ts) < (ttl || this._cacheTTL) * 20) { this._cache[key] = s; return s.data; }
     } catch(e) {}
     return null;
   },
   _setCache: function(key, data) {
-    var entry = { data: data, ts: Date.now() };
-    this._cache[key] = entry;
-    // Persist to localStorage for data retention across reloads
-    try { localStorage.setItem('ibkr_cache_' + key, JSON.stringify(entry)); } catch(e) {}
+    var e = { data: data, ts: Date.now() };
+    this._cache[key] = e;
+    try { localStorage.setItem('ibkr_c_' + key, JSON.stringify(e)); } catch(e) {}
   },
 
-  // Initialize IBKR brokerage session
-  init: function() {
+  // ── Raw fetch to gateway (handles self-signed cert gracefully) ──
+  _gw: function(path, opts) {
     var self = this;
-    self._status = 'connecting';
-    self._updateStatusUI();
-    return fetch('/api/ibkr-init')
-      .then(function(r) { return r.json(); })
-      .then(function(j) {
-        if (j.success) { self._status = 'connected'; self._initialized = true; }
-        else { self._status = 'error'; }
-        self._updateStatusUI();
-        return j;
+    return fetch(self.GW + path, Object.assign({ credentials: 'include' }, opts || {}))
+      .then(function(r) {
+        if (r.status === 401) { self._setStatus('disconnected'); throw new Error('Gateway session expired — please re-authenticate in IB Gateway'); }
+        if (!r.ok) throw new Error('Gateway error ' + r.status + ' at ' + path);
+        return r.json();
       })
       .catch(function(err) {
-        self._status = 'error';
-        self._updateStatusUI();
-        console.warn('IBKR init failed:', err);
-        return { success: false, error: err.message };
+        // TypeError usually means the gateway isn't running or cert not accepted
+        if (err instanceof TypeError || err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+          if (self._status !== 'cert-needed') {
+            self._setStatus('cert-needed');
+          }
+        }
+        throw err;
       });
   },
 
+  // ── Status management ──────────────────────────────────────
+  _setStatus: function(s) {
+    this._status = s;
+    this._updateStatusUI();
+  },
   _updateStatusUI: function() {
     var el = document.getElementById('ibkr-status');
     if (!el) return;
-    var colors = { disconnected: '#94a3b8', connecting: '#f59e0b', connected: '#16a34a', error: '#dc2626' };
-    var labels = { disconnected: 'Disconnected', connecting: 'Connecting...', connected: 'Connected', error: 'Error' };
-    el.innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:' + colors[this._status] + '">' +
-      '<span style="width:6px;height:6px;border-radius:50%;background:' + colors[this._status] + '"></span> IBKR: ' + labels[this._status] + '</span>';
+    var cfg = {
+      disconnected: { c:'#94a3b8', t:'IBKR: Disconnected' },
+      connecting:   { c:'#f59e0b', t:'IBKR: Connecting\u2026' },
+      connected:    { c:'#16a34a', t:'IBKR: Live' },
+      error:        { c:'#dc2626', t:'IBKR: Error' },
+      'cert-needed':{ c:'#f59e0b', t:'IBKR: Accept certificate \u2192' }
+    };
+    var m = cfg[this._status] || cfg.disconnected;
+    var clickable = (this._status === 'cert-needed') ? ' style="cursor:pointer;text-decoration:underline" onclick="IBKRAPI.openCertPage()"' : '';
+    el.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:' + m.c + '"' + clickable + '>' +
+      '<span style="width:7px;height:7px;border-radius:50%;background:' + m.c + ';flex-shrink:0"></span>' + m.t + '</span>';
   },
 
-  // Resolve ticker symbol to IBKR conid
+  // Open the gateway URL so the user can accept the self-signed certificate
+  openCertPage: function() {
+    window.open('https://localhost:5000', '_blank');
+    setTimeout(function() { IBKRAPI.init(); }, 4000);
+  },
+
+  // ── Initialise: check auth status, start keepalive ─────────
+  init: function() {
+    var self = this;
+    self._setStatus('connecting');
+    return self._gw('/iserver/auth/status')
+      .then(function(data) {
+        if (data.authenticated) {
+          self._setStatus('connected');
+          self._startKeepalive();
+          return data;
+        }
+        // Not authenticated — try to trigger reauthentication
+        return self._gw('/iserver/reauthenticate', { method: 'POST' })
+          .then(function() { self._setStatus('disconnected'); return data; })
+          .catch(function() { self._setStatus('disconnected'); return data; });
+      })
+      .catch(function(err) {
+        if (self._status !== 'cert-needed') self._setStatus('disconnected');
+        return { authenticated: false, error: err.message };
+      });
+  },
+
+  // Tickle endpoint keeps the gateway session alive
+  _startKeepalive: function() {
+    var self = this;
+    if (self._keepaliveTimer) clearInterval(self._keepaliveTimer);
+    self._keepaliveTimer = setInterval(function() {
+      self._gw('/tickle').then(function(r) {
+        self._setStatus(r.iserver && r.iserver.authStatus && r.iserver.authStatus.authenticated ? 'connected' : 'disconnected');
+      }).catch(function() {
+        if (self._status === 'connected') self._setStatus('disconnected');
+      });
+    }, 55000); // every 55s (session times out at ~60s without activity)
+  },
+
+  // ── Conid resolution ───────────────────────────────────────
   _resolveConid: function(ticker) {
     if (this._conidMap[ticker]) return Promise.resolve(this._conidMap[ticker]);
-    // Check localStorage
     try {
-      var stored = JSON.parse(localStorage.getItem('ibkr_conids'));
-      if (stored && stored[ticker]) { this._conidMap[ticker] = stored[ticker]; return Promise.resolve(stored[ticker]); }
+      var stored = JSON.parse(localStorage.getItem('ibkr_conids') || '{}');
+      if (stored[ticker]) { this._conidMap[ticker] = stored[ticker]; return Promise.resolve(stored[ticker]); }
     } catch(e) {}
     var self = this;
-    return this.searchTicker(ticker).then(function(results) {
-      if (results.length > 0) {
-        self._conidMap[ticker] = results[0].conid;
-        // Save conid mapping to localStorage
-        try {
-          var stored = JSON.parse(localStorage.getItem('ibkr_conids') || '{}');
-          stored[ticker] = results[0].conid;
-          localStorage.setItem('ibkr_conids', JSON.stringify(stored));
-        } catch(e) {}
-        return results[0].conid;
-      }
-      throw new Error('Ticker not found: ' + ticker);
+    return self.searchTicker(ticker).then(function(results) {
+      if (!results.length) throw new Error('Ticker not found: ' + ticker);
+      var conid = results[0].conid;
+      self._conidMap[ticker] = conid;
+      try {
+        var map = JSON.parse(localStorage.getItem('ibkr_conids') || '{}');
+        map[ticker] = conid;
+        localStorage.setItem('ibkr_conids', JSON.stringify(map));
+      } catch(e) {}
+      return conid;
     });
   },
 
+  // ── Ticker search ──────────────────────────────────────────
+  searchTicker: function(query) {
+    var self = this;
+    var cached = self._getCached('search_' + query);
+    if (cached) return Promise.resolve(cached);
+    return self._gw('/iserver/secdef/search?symbol=' + encodeURIComponent(query))
+      .then(function(data) {
+        var results = (Array.isArray(data) ? data : []).map(function(item) {
+          // Each item has conid (if simple) or sections array for different security types
+          var conid = item.conid || (item.sections && item.sections[0] && item.sections[0].conid);
+          return {
+            conid: conid,
+            symbol: item.symbol || query.toUpperCase(),
+            name: item.companyName || item.description || item.symbol,
+            exchange: item.description || '',
+            type: (item.sections && item.sections[0] && item.sections[0].secType) || 'STK'
+          };
+        }).filter(function(r) { return r.conid; }).slice(0, 10);
+        self._setCache('search_' + query, results);
+        return results;
+      });
+  },
+
+  // ── Live quote (snapshot) ──────────────────────────────────
+  // IBKR field IDs: 31=Last, 55=Symbol, 70=High, 71=Low, 82=Change, 83=Change%, 84=Bid, 86=Ask, 87=Volume, 7295=Open
+  _FIELDS: '31,55,70,71,82,83,84,86,87,7295',
   getQuote: function(ticker) {
     var self = this;
-    var cached = self._getCached('quote_' + ticker);
+    var cached = self._getCached('quote_' + ticker, self._cacheTTL);
     if (cached) return Promise.resolve(cached);
     return self._resolveConid(ticker).then(function(conid) {
-      return fetch('/api/ibkr-quote?conids=' + conid)
-        .then(function(r) { return r.json(); })
-        .then(function(quotes) {
-          var q = quotes[conid];
-          if (!q) throw new Error('No quote data for ' + ticker);
-          var result = { price: q.price, prevClose: q.open, currency: 'USD', timestamp: Math.floor(q.timestamp / 1000), change: q.change, changePct: q.changePct };
+      // First call subscribes, second returns fresh data
+      return self._gw('/iserver/marketdata/snapshot?conids=' + conid + '&fields=' + self._FIELDS)
+        .then(function() {
+          return new Promise(function(resolve) { setTimeout(resolve, 600); });
+        })
+        .then(function() {
+          return self._gw('/iserver/marketdata/snapshot?conids=' + conid + '&fields=' + self._FIELDS);
+        })
+        .then(function(data) {
+          var item = Array.isArray(data) ? data[0] : {};
+          var price = parseFloat(item['31']) || parseFloat(item['84']) || 0;
+          if (!price) throw new Error('No price data yet for ' + ticker);
+          var result = {
+            price: price,
+            prevClose: parseFloat(item['7295']) || 0,
+            high: parseFloat(item['70']) || 0,
+            low: parseFloat(item['71']) || 0,
+            change: parseFloat(item['82']) || 0,
+            changePct: parseFloat(item['83']) || 0,
+            currency: 'USD',
+            timestamp: Math.floor(Date.now() / 1000)
+          };
           self._setCache('quote_' + ticker, result);
-          // Save latest prices to localStorage for offline access
           self._saveLivePrices(ticker, result);
           return result;
         });
     });
   },
 
+  // Batch multiple quotes
+  getMultipleQuotes: function(tickers) {
+    var self = this;
+    return Promise.all(tickers.map(function(t) {
+      return self.getQuote(t)
+        .then(function(q) { return { ticker: t, quote: q }; })
+        .catch(function() { return { ticker: t, quote: null }; });
+    }));
+  },
+
+  // ── Historical data ────────────────────────────────────────
   getHistorical: function(ticker, range) {
     var self = this;
     range = range || '5y';
-    var cached = self._getCached('hist_' + ticker + '_' + range);
+    var cached = self._getCached('hist_' + ticker + '_' + range, self._histCacheTTL);
     if (cached) return Promise.resolve(cached);
     return self._resolveConid(ticker).then(function(conid) {
-      return fetch('/api/ibkr-historical?conid=' + conid + '&period=' + range + '&bar=1d')
-        .then(function(r) { return r.json(); })
+      return self._gw('/iserver/marketdata/history?conid=' + conid + '&period=' + range + '&bar=1d&outsideRth=false')
         .then(function(data) {
           var dates = [], prices = [];
-          if (data.dates) {
-            for (var i = 0; i < data.dates.length; i++) {
-              if (data.prices[i] != null) {
-                dates.push(new Date(data.dates[i]));
-                prices.push(data.prices[i]);
-              }
-            }
+          if (data && data.data) {
+            data.data.forEach(function(bar) {
+              if (bar.c != null) { dates.push(new Date(bar.t)); prices.push(bar.c); }
+            });
           }
           var result = { dates: dates, prices: prices };
           self._setCache('hist_' + ticker + '_' + range, result);
@@ -1191,47 +1289,18 @@ var IBKRAPI = {
     });
   },
 
-  searchTicker: function(query) {
-    var self = this;
-    var cached = self._getCached('search_' + query);
-    if (cached) return Promise.resolve(cached);
-    return fetch('/api/ibkr-search?q=' + encodeURIComponent(query))
-      .then(function(r) { return r.json(); })
-      .then(function(results) {
-        if (!Array.isArray(results)) results = [];
-        var normalized = results.map(function(r) {
-          return { symbol: r.symbol, name: r.name, exchange: r.exchange, type: r.type, conid: r.conid };
-        });
-        self._setCache('search_' + query, normalized);
-        return normalized;
-      });
-  },
-
-  getMultipleQuotes: function(tickers) {
-    var self = this;
-    // Try to resolve all conids first, then batch request
-    return Promise.all(tickers.map(function(t) {
-      return self.getQuote(t).then(function(q) { return { ticker: t, quote: q }; }).catch(function() { return { ticker: t, quote: null }; });
-    }));
-  },
-
-  // Save live prices to localStorage so they persist
+  // ── Persistence helpers ────────────────────────────────────
   _saveLivePrices: function(ticker, priceData) {
     try {
-      var stored = JSON.parse(localStorage.getItem('ibkr_live_prices') || '{}');
-      stored[ticker] = { price: priceData.price, currency: priceData.currency, timestamp: Date.now() };
-      localStorage.setItem('ibkr_live_prices', JSON.stringify(stored));
+      var s = JSON.parse(localStorage.getItem('ibkr_live_prices') || '{}');
+      s[ticker] = { price: priceData.price, currency: priceData.currency || 'USD', timestamp: Date.now() };
+      localStorage.setItem('ibkr_live_prices', JSON.stringify(s));
     } catch(e) {}
   },
-
-  // Load last known prices from localStorage (for offline/startup)
   getStoredPrices: function() {
     try { return JSON.parse(localStorage.getItem('ibkr_live_prices') || '{}'); } catch(e) { return {}; }
   }
 };
-
-// Alias for backward compatibility with existing code references
-var YahooAPI = IBKRAPI;
 
 // ══════════════════════════════════════════════════════════
 // PORTFOLIO STATE MANAGER (localStorage-backed)
